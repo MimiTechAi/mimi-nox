@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="◑ MiMi Nox – Lokale KI. Privat. Lokal. Deins." />
+  <title>◑ MiMi Nox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Hintergrund-Atmosphäre (Baumsilhouetten + Glow) ── -->
+  <div class="forest-bg" aria-hidden="true"></div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TOP BAR
+  ══════════════════════════════════════════════════════ -->
+  <header class="topbar" role="banner">
+
+    <!-- Logo -->
+    <div class="logo" aria-label="MiMi Nox Home">
+      <span class="logo-symbol" aria-hidden="true">◑</span>
+      <div class="logo-text">
+        <span class="logo-name">MiMi Nox</span>
+        <span class="logo-tagline">Privat · Lokal · Deins.</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="topnav" role="navigation" aria-label="Hauptnavigation">
+      <button class="tab active" id="tab-chat"    data-tab="chat"    aria-selected="true">💬 Chat</button>
+      <span class="tab-sep" aria-hidden="true">|</span>
+      <button class="tab"        id="tab-history" data-tab="history" aria-selected="false">📚 Verlauf</button>
+      <span class="tab-sep" aria-hidden="true">|</span>
+      <button class="tab"        id="tab-memory"  data-tab="memory"  aria-selected="false">🧠 Memory</button>
+      <span class="tab-sep" aria-hidden="true">|</span>
+      <button class="tab"        id="tab-profile" data-tab="profile" aria-selected="false">👤 Profil</button>
+    </nav>
+
+    <!-- Rechts: Modell + Status -->
+    <div class="topbar-right">
+      <select class="model-select" id="model-select" aria-label="KI-Modell auswählen">
+        <option value="phi4-mini">phi4-mini</option>
+        <option value="gemma4:e4b">gemma4:e4b</option>
+        <option value="llama3.2">llama3.2</option>
+        <option value="mistral">mistral</option>
+      </select>
+      <div class="status-badge" id="status-badge" aria-live="polite">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">Verbinden…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════
+       OFFLINE BANNER
+  ══════════════════════════════════════════════════════ -->
+  <div class="offline-banner hidden" id="offline-banner" role="alert">
+    ⚠ Ollama nicht erreichbar — starte Ollama mit: <code>ollama serve</code>
+    <button class="offline-retry" id="offline-retry" aria-label="Erneut verbinden">↻ Erneut versuchen</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       MAIN — Chat + Aktivitäts-Panel
+  ══════════════════════════════════════════════════════ -->
+  <main class="main" id="main-area">
+
+    <!-- ── CHAT TAB ─────────────────────────────────── -->
+    <section class="tab-content active" id="view-chat" aria-label="Chat">
+
+      <!-- Chat Area (65%) -->
+      <div class="chat-area" id="chat-area" role="log" aria-live="polite" aria-label="Chat-Verlauf">
+
+        <!-- Willkommens-Screen (wenn leer) -->
+        <div class="welcome" id="welcome-screen">
+          <div class="welcome-glow" aria-hidden="true">◑</div>
+          <h1 class="welcome-heading">Womit kann ich helfen?</h1>
+          <p class="welcome-sub">Tippe eine Frage oder wähle einen Skill</p>
+          <div class="welcome-cards" role="list">
+            <button class="welcome-card" data-prompt="Suche aktuelle KI-News vom heutigen Tag" role="listitem">
+              <span class="card-icon">🔍</span>
+              <span>Aktuelle News suchen</span>
+            </button>
+            <button class="welcome-card" data-prompt="/files lies meine Datei auf dem Desktop" role="listitem">
+              <span class="card-icon">📁</span>
+              <span>Datei analysieren</span>
+            </button>
+            <button class="welcome-card" data-prompt="/write Schreibe eine professionelle E-Mail für" role="listitem">
+              <span class="card-icon">✏️</span>
+              <span>Text schreiben</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat-Nachrichten werden hier per JS eingefügt -->
+        <div class="messages" id="messages" aria-label="Nachrichten"></div>
+      </div>
+
+      <!-- Aktivitäts-Panel (35%) -->
+      <aside class="activity-panel" id="activity-panel" aria-label="KI-Aktivität">
+        <div class="ap-header">
+          <span class="ap-title">⬡ KI-Aktivität</span>
+          <button class="ap-toggle" id="ap-toggle" aria-label="Panel ein-/ausklappen" title="Ein-/ausklappen">◀</button>
+        </div>
+
+        <!-- Terminal Feed -->
+        <div class="ap-terminal" id="ap-terminal" aria-live="polite" aria-label="KI-Aktivitäts-Log">
+          <div class="terminal-placeholder">Warte auf Eingabe…</div>
+        </div>
+
+        <!-- Memory -->
+        <div class="ap-memory">
+          <div class="ap-section-title">🧠 Was ich über dich weiß</div>
+          <div class="memory-cards" id="memory-cards" aria-label="Gespeichertes Memory">
+            <div class="memory-placeholder">Noch nichts gespeichert.</div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ── VERLAUF TAB ────────────────────────────── -->
+    <section class="tab-content" id="view-history" aria-label="Verlauf" hidden>
+      <div class="tab-inner">
+        <h2 class="tab-heading">📚 Gespeicherte Unterhaltungen</h2>
+        <p class="tab-sub">Deine Unterhaltungen bleiben nur lokal auf deinem Gerät.</p>
+        <div id="history-list" class="history-list" aria-label="Verlaufsliste"></div>
+        <button class="btn-danger" id="clear-history" aria-label="Verlauf löschen">🗑 Verlauf löschen</button>
+      </div>
+    </section>
+
+    <!-- ── MEMORY TAB ─────────────────────────────── -->
+    <section class="tab-content" id="view-memory" aria-label="Memory" hidden>
+      <div class="tab-inner">
+        <h2 class="tab-heading">🧠 Langzeit-Memory</h2>
+        <p class="tab-sub">Die KI erinnert sich über mehrere Sessions an wichtige Informationen.</p>
+        <div class="memory-search-bar">
+          <input type="search" id="memory-search-input" placeholder="Memory durchsuchen…" aria-label="Memory durchsuchen" />
+          <button id="memory-search-btn" aria-label="Suchen">🔍</button>
+        </div>
+        <div id="memory-full-list" class="memory-full-list" aria-label="Alle Memory-Einträge"></div>
+      </div>
+    </section>
+
+    <!-- ── PROFIL TAB ─────────────────────────────── -->
+    <section class="tab-content" id="view-profile" aria-label="Profil" hidden>
+      <div class="tab-inner">
+        <h2 class="tab-heading">👤 Dein Profil</h2>
+        <p class="tab-sub">Hilft der KI, bessere und persönlichere Antworten zu geben.</p>
+        <form class="profile-form" id="profile-form" aria-label="Profil-Formular">
+          <label for="pf-name">Name <span class="optional">(optional)</span></label>
+          <input type="text" id="pf-name" name="name" placeholder="Wie heißt du?" autocomplete="name" />
+
+          <label for="pf-expertise">Expertise</label>
+          <input type="text" id="pf-expertise" name="expertise" placeholder="z.B. Python-Entwickler, Marketing, Arzt…" />
+
+          <label for="pf-language">Bevorzugte Sprache</label>
+          <select id="pf-language" name="preferred_language">
+            <option value="de">Deutsch</option>
+            <option value="en">Englisch</option>
+          </select>
+
+          <label for="pf-style">Antwort-Stil</label>
+          <select id="pf-style" name="response_style">
+            <option value="ausführlich">Ausführlich</option>
+            <option value="kurz">Kurz &amp; knapp</option>
+            <option value="technisch">Technisch</option>
+            <option value="einfach">Einfach erklärt</option>
+          </select>
+
+          <button type="submit" class="btn-primary" id="save-profile">💾 Speichern</button>
+          <span class="save-confirm hidden" id="save-confirm" aria-live="polite">✅ Gespeichert!</span>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════
+       BOTTOM BAR (fixed)
+  ══════════════════════════════════════════════════════ -->
+  <footer class="bottombar" role="contentinfo">
+
+    <!-- Skill Chips -->
+    <div class="skill-chips" id="skill-chips" role="list" aria-label="Skill-Schnellzugriff">
+      <button class="skill-chip" data-trigger="/research" role="listitem" title="Web-Suche starten">🔍 /research</button>
+      <button class="skill-chip" data-trigger="/files"    role="listitem" title="Dateien lesen/suchen">📁 /files</button>
+      <button class="skill-chip" data-trigger="/write"    role="listitem" title="Texte schreiben">✏️ /write</button>
+      <button class="skill-chip" data-trigger="/review"   role="listitem" title="Code reviewen">💻 /review</button>
+      <button class="skill-chip" data-trigger="/shell"    role="listitem" title="Shell-Befehl">›_ /shell</button>
+    </div>
+
+    <!-- Input Row -->
+    <div class="input-row">
+      <div class="input-wrap" id="input-wrap">
+        <textarea
+          class="chat-input"
+          id="chat-input"
+          rows="1"
+          placeholder="Nachricht eingeben… oder / für Skills"
+          aria-label="Deine Nachricht"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="true"
+        ></textarea>
+        <button class="send-btn" id="send-btn" aria-label="Nachricht senden" title="Senden (Enter)">➤</button>
+      </div>
+    </div>
+
+    <!-- Keyboard Hint -->
+    <div class="input-hint" aria-hidden="true">
+      ↑ Letzter Befehl · / Skills · Enter Senden · Esc Abbruch
+    </div>
+
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
