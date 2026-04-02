@@ -158,7 +158,13 @@ body {
   background: var(--green);
   border-radius: 2px;
 }
-.tab-sep { color: var(--panel-border); font-size: 14px; pointer-events: none; }
+.tab-sep {
+  color: var(--panel-border);
+  font-size: 14px;
+  font-weight: 300;
+  pointer-events: none;
+  opacity: 0.6;
+}
 
 /* Topbar right */
 .topbar-right {
@@ -181,13 +187,21 @@ body {
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2322c55e'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
-  padding-right: 24px;
-  transition: border-color var(--anim-speed);
+  padding-right: 26px;
+  transition: border-color var(--anim-speed), box-shadow var(--anim-speed);
+  /* Kein Browser-Default Outline oder blauer Focus-Ring */
+  box-shadow: none;
 }
 .model-select:hover { border-color: var(--green); }
+.model-select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.15);
+  outline: none;
+}
 
 .status-badge {
   display: flex;
