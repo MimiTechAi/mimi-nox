@@ -114,7 +114,9 @@ class HistoryInput(Widget):
         if new_index == len(self._history):
             input_widget.value = self._saved_draft
         else:
-            input_widget.value = self._history[-(new_index + 1)]  # reverse order
+            # new_index counts from the end: 0 = len-1 (newest), 1 = len-2, etc.
+            # Pressing UP once → most recent entry (history[-1])
+            input_widget.value = self._history[len(self._history) - 1 - new_index]
 
         # Move cursor to end
         input_widget.cursor_position = len(input_widget.value)
