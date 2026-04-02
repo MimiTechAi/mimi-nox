@@ -1,18 +1,19 @@
 """
-ClawDash Chat Engine – BlackForest Edition
+◑ MiMi Nox – Chat Engine
 
 Async streaming wrapper around the Ollama Python client.
-Designed to be called exclusively from Textual @work workers.
+Includes Tool-Calling Loop for agentic workflows.
 
-Pattern:
-    The on_chunk callback is called for every streamed token.
-    The worker (ui/app.py) uses post_message() to route chunks to the UI.
-    This module knows nothing about Textual – pure async Python.
+Designed to be called exclusively from @work workers (Textual / FastAPI).
+This module knows nothing about UI – pure async Python.
 
-Model loading note:
-    Large models (>4GB) can take 30-120s to load from disk into RAM on first
-    call after Ollama restart. FIRST_CHUNK_TIMEOUT controls how long we wait
-    before giving the user a "still loading…" hint.
+Tool-Calling Architecture:
+    1. Non-streaming call with tools → detect tool_calls (stream=False REQUIRED)
+    2. Execute each tool via core.tools.execute_tool()
+    3. Stream final answer (stream=True for smooth UX)
+
+    stream=False für Tool-Detection ist PFLICHT.
+    Bekanntes Ollama-Limit: Tool-Calls brechen mit stream=True.
 """
 
 from __future__ import annotations
@@ -23,9 +24,17 @@ from collections.abc import Callable
 import ollama
 
 from core.types import Message
+from core.tools import (
+    ShellConfirmationRequired,
+    execute_tool,
+    get_tool_schemas,
+)
 
 # How long to wait for the FIRST token before showing a "still loading" hint
 FIRST_CHUNK_TIMEOUT: float = 15.0
+
+# Maximum tool-calling iterations to prevent infinite loops
+MAX_TOOL_ITERATIONS: int = 5
 
 
 class OllamaNotReachableError(Exception):
@@ -200,3 +209,136 @@ async def check_ollama_connection(model: str) -> tuple[bool, str, list[str]]:
         return False, "timeout", []
     except Exception:
         return False, "offline", []
+
+
+async def chat_with_tools(
+    *,
+    model: str,
+    history: list[Message],
+    on_chunk: Callable[[str], None],
+    on_tool_start: Callable[[str, dict], None] | None = None,
+    on_tool_done: Callable[[str, str], None] | None = None,
+    on_loading_hint: Callable[[], None] | None = None,
+) -> str:
+    """
+    Tool-enabled chat mit automatischer Tool-Ausführung.
+
+    Ablauf:
+        1. Non-streaming Aufruf mit Tool-Schemas → Tool-Calls detektieren
+        2. Tools ausführen (max MAX_TOOL_ITERATIONS Iterationen)
+        3. Finale Antwort als Text via on_chunk ausgeben
+
+    WICHTIG: stream=False für Tool-Detection ist PFLICHT.
+    Bekanntes Ollama-Limit: Tool-Calls brechen mit stream=True.
+
+    Args:
+        model:          Ollama Modell-Name
+        history:        Konversations-History (role/content dicts)
+        on_chunk:       Callback für jeden Text-Token der finalen Antwort
+        on_tool_start:  Callback wenn Tool gestartet wird (name, args)
+        on_tool_done:   Callback wenn Tool fertig ist (name, result)
+        on_loading_hint: Callback wenn Modell zu lange lädt
+
+    Raises:
+        OllamaNotReachableError:    Ollama nicht erreichbar
+        OllamaModelNotFoundError:   Modell nicht lokal vorhanden
+        ShellConfirmationRequired:  Shell-Tool braucht User-Bestätigung
+    """
+    client = ollama.AsyncClient()
+    messages: list = list(history)
+    tools = get_tool_schemas()
+
+    # ── Schritt 1: Tool-Detection (stream=False – Pflicht!) ──────────────────
+    try:
+        response = await asyncio.wait_for(
+            client.chat(
+                model=model,
+                messages=messages,
+                tools=tools,
+                stream=False,
+            ),
+            timeout=60.0,
+        )
+    except asyncio.TimeoutError:
+        raise OllamaNotReachableError()
+    except Exception as exc:
+        exc_str = str(exc).lower()
+        if any(kw in exc_str for kw in ("connection", "connect", "refused", "socket")):
+            raise OllamaNotReachableError() from exc
+        if "not found" in exc_str or "does not exist" in exc_str:
+            raise OllamaModelNotFoundError(model) from exc
+        raise
+
+    # ── Schritt 2: Tool-Calling Loop ─────────────────────────────────────────
+    iteration = 0
+
+    while (
+        hasattr(response, "message")
+        and hasattr(response.message, "tool_calls")
+        and response.message.tool_calls
+        and iteration < MAX_TOOL_ITERATIONS
+    ):
+        iteration += 1
+
+        # Assistenten-Nachricht mit tool_calls zur History hinzufügen
+        messages.append(response.message)
+
+        for tool_call in response.message.tool_calls:
+            name: str = tool_call.function.name
+            args: dict = tool_call.function.arguments or {}
+
+            # Callback: Tool startet
+            if on_tool_start is not None:
+                on_tool_start(name, args)
+
+            # ShellConfirmationRequired darf NOT abgefangen werden – App muss handeln
+            if name == "run_shell":
+                raise ShellConfirmationRequired(args.get("command", ""))
+
+            # Tool ausführen (Fehler werden in execute_tool abgefangen)
+            result = await execute_tool(name, args)
+
+            # Callback: Tool fertig
+            if on_tool_done is not None:
+                on_tool_done(name, result)
+
+            # Tool-Ergebnis zur History hinzufügen
+            messages.append({
+                "role": "tool",
+                "content": result,
+            })
+
+        # Nächste Iteration: prüfen ob weitere Tool-Calls folgen
+        try:
+            response = await client.chat(
+                model=model,
+                messages=messages,
+                tools=tools,
+                stream=False,
+            )
+        except Exception as exc:
+            exc_str = str(exc).lower()
+            if any(kw in exc_str for kw in ("connection", "connect", "refused")):
+                raise OllamaNotReachableError() from exc
+            raise
+
+    # Max Iterationen aufgebraucht?
+    if iteration >= MAX_TOOL_ITERATIONS:
+        warning = f"[⚠ Maximale Tool-Iterationen ({MAX_TOOL_ITERATIONS}) erreicht]"
+        on_chunk(warning)
+        return warning
+
+    # ── Schritt 3: Finale Antwort ausgeben ───────────────────────────────────
+    final_content: str = ""
+
+    if hasattr(response, "message") and response.message.content:
+        final_content = str(response.message.content)
+        # Wort-für-Wort ausgeben für smooth streaming Effekt
+        words = final_content.split(" ")
+        for i, word in enumerate(words):
+            chunk = word + (" " if i < len(words) - 1 else "")
+            on_chunk(chunk)
+            await asyncio.sleep(0.008)  # smooth streaming feel
+
+    return final_content
+
