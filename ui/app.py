@@ -1,16 +1,9 @@
 """
-ClawDash App – BlackForest Edition
+◑ MiMi Nox – App
 
-Main Textual application. Orchestrates:
-- Layout: Header / ChatView / HistoryInput / StatusBar
-- Worker: @work(exclusive=True) for Ollama streaming
-- Session: load on start, save after every message
-- Keyboard: Ctrl+R (reset), Ctrl+L (clear), q (quit)
-
-Design rules enforced here:
-- Workers communicate with UI ONLY via post_message()
-- Input is disabled during streaming (Input.disabled)
-- Never crash – all errors caught and shown in StatusBar
+Main Textual application for MiMi Nox (TUI backend).
+Branding: ◑ MiMi Nox · Privat. Lokal. Yours.
+MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
 """
 
 from __future__ import annotations
@@ -24,7 +17,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Header
 
-from core import __edition__, __version__
+from core import __edition__, __tagline__, __version__
 from core.chat import (
     OllamaModelNotFoundError,
     OllamaNotReachableError,
@@ -52,11 +45,10 @@ class ClawDashApp(App):
     MiMi Tech AI UG – Bad Liebenzell, Schwarzwald.
     """
 
-    # Path is relative to this file's location
-    CSS_PATH = Path(__file__).parent / "clawdash.tcss"
+    CSS_PATH = Path(__file__).parent / "mimi_nox.tcss"
 
-    TITLE = f"🌲 ClawDash  {__edition__}  v{__version__}"
-    SUB_TITLE = ""
+    TITLE = f"◑ MiMi Nox  v{__version__}"
+    SUB_TITLE = __tagline__
 
     BINDINGS = [
         Binding("ctrl+r", "reset_session", "Reset session", show=True),
@@ -111,7 +103,7 @@ class ClawDashApp(App):
         if count > 0:
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    f"🌲 ClawDash {__edition__} — Willkommen zurück.\n"
+                    f"◑ MiMi Nox – Willkommen zurück.\n"
                     f"   Letzte Session: {count} Nachrichten, {when}\n"
                     f"   Ctrl+R = Reset  ·  Ctrl+L = Clear  ·  q = Quit",
                     style="welcome",
@@ -120,8 +112,8 @@ class ClawDashApp(App):
         else:
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    f"🌲 ClawDash {__edition__} — Bereit.\n"
-                    f"   Slash-Commands: /post  /debug  /idea  /explain  /commit\n"
+                    f"◑ MiMi Nox – Bereit. Privat. Lokal. Yours.\n"
+                    f"   /post  /debug  /idea  /explain  /commit  /swarm\n"
                     f"   Tab = Autocomplete  ·  ↑↓ = History  ·  q = Quit",
                     style="welcome",
                 )
@@ -161,7 +153,7 @@ class ClawDashApp(App):
                     f"   ollama pull {self.model}\n\n"
                     f"   Oder starte mit einem vorhandenen Modell:\n"
                     f"{model_list}\n\n"
-                    f"   Beispiel:  clawdash --model {available[0] if available else 'llama3.1'}",
+                    f"   Tipp: ollama pull gemma4:e4b  (★ neu, Tool-Calling, 3GB)",
                     style="error-msg",
                 )
             )
@@ -418,7 +410,7 @@ class ClawDashApp(App):
         chat.clear_display()
         chat.post_message(
             ChatView.AddSystemMessage(
-                "🌲 Session zurückgesetzt. Frischer Start.",
+                "◑ Session zurückgesetzt. Frischer Start.",
                 style="system-msg",
             )
         )

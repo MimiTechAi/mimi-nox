@@ -1,0 +1,175 @@
+/* =========================================================
+   ◑ MiMi Nox – BlackForest Edition
+   Textual CSS (TCSS) – Nox Dark Palette
+   
+   MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
+   
+   Palette:
+     $bg-deep      #050508   Nox Black
+     $surface      #0d0e14   Surface Dark
+     $nox-purple   #c084fc   Nox Accent (Nacht + Tech)
+     $nox-dim      #7c3aed   Tool-Call Purple
+     $text         #e2e8f0   Warm White
+     $muted        #64748b   Dimmed
+     $pine         #1a1a2e   Surface Border
+     $amber        #f87171   Error Red
+     $success      #22c55e   Success Green
+   ========================================================= */
+
+/* ── Root ───────────────────────────────────────────────── */
+
+App {
+    background: #050508;
+}
+
+Screen {
+    background: #050508;
+    layout: vertical;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+
+Header {
+    background: #0d0e14;
+    color: #c084fc;
+    text-style: bold;
+    height: 1;
+    dock: top;
+}
+
+/* ── Chat View ──────────────────────────────────────────── */
+
+#chat-view {
+    background: #050508;
+    border: tall #1a1a2e;
+    scrollbar-color: #1a1a2e;
+    scrollbar-color-hover: #2d2d4e;
+    padding: 0 1;
+    height: 1fr;
+}
+
+/* ── Input Area ─────────────────────────────────────────── */
+
+#input-area {
+    height: 3;
+    background: #08090f;
+    border: tall #1a1a2e;
+    padding: 0 1;
+}
+
+#input-area.command-mode {
+    border: tall #c084fc;
+    background: #0e0a1a;
+}
+
+#chat-input {
+    background: #050508;
+    color: #c084fc;
+    border: none;
+    height: 1;
+    width: 1fr;
+}
+
+#chat-input:focus {
+    border: none;
+    background: #050508;
+}
+
+/* ── Command Hint ───────────────────────────────────────── */
+
+#command-hint {
+    height: 1;
+    background: #0d0e14;
+    color: #64748b;
+    padding: 0 1;
+    display: none;
+}
+
+#command-hint.visible {
+    display: block;
+}
+
+/* ── Status Bar ─────────────────────────────────────────── */
+
+#status-bar {
+    height: 1;
+    background: #0d0e14;
+    color: #64748b;
+    dock: bottom;
+    padding: 0 1;
+    layout: horizontal;
+}
+
+#status-bar.streaming {
+    background: #0e0a1a;
+    color: #c084fc;
+}
+
+#status-bar.error {
+    background: #1a0a0a;
+    color: #f87171;
+}
+
+#status-indicator {
+    width: auto;
+    color: #22c55e;
+}
+
+#status-indicator.offline {
+    color: #f87171;
+}
+
+#status-indicator.streaming {
+    color: #c084fc;
+}
+
+#status-model {
+    width: auto;
+    color: #64748b;
+    padding: 0 1;
+}
+
+#status-tagline {
+    width: 1fr;
+    color: #2d2d4e;
+    text-align: right;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+
+ScrollableContainer > ScrollBar {
+    background: #050508;
+    color: #1a1a2e;
+}
+
+/* ── Welcome / System Messages ──────────────────────────── */
+
+.welcome {
+    color: #64748b;
+    text-style: italic;
+}
+
+.system-msg {
+    color: #64748b;
+}
+
+.error-msg {
+    color: #f87171;
+    text-style: bold;
+}
+
+/* ── Fallback / Tool hints ──────────────────────────────── */
+
+.fallback-hint {
+    color: #64748b;
+    text-style: italic;
+}
+
+.tool-call {
+    color: #7c3aed;
+    text-style: italic;
+}
+
+.tool-done {
+    color: #22c55e;
+}

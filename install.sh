@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  ClawDash – BlackForest Edition
+#  ◑ MiMi Nox – Local AI Assistant
 #  install.sh – One-command setup
 #
 #  Usage:
@@ -21,11 +21,11 @@ BOLD='\033[1m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-CLAWDASH_MODEL="${CLAWDASH_MODEL:-phi4-mini}"
+CLAWDASH_MODEL="${CLAWDASH_MODEL:-gemma4:e4b}"
 
 banner() {
   echo ""
-  echo -e "${NEON}${BOLD}  🌲 ClawDash – BlackForest Edition${NC}"
+  echo -e "${NEON}${BOLD}  🌲 ◑ MiMi Nox – Local AI Assistant${NC}"
   echo -e "${DIM}  MiMi Tech AI UG · Bad Liebenzell, Schwarzwald${NC}"
   echo ""
 }
@@ -109,10 +109,10 @@ echo ""
 echo -e "${NEON}${BOLD}  ✅ Setup abgeschlossen!${NC}"
 echo ""
 echo -e "  ${BOLD}Starten mit:${NC}"
-echo -e "  ${NEON}.venv/bin/clawdash${NC}"
+echo -e "  ${NEON}.venv/bin/mimi-nox${NC}"
 echo ""
 echo -e "  ${DIM}Modell wechseln:${NC}"
-echo -e "  ${DIM}.venv/bin/clawdash --model llama3.1${NC}"
+echo -e "  ${DIM}.venv/bin/mimi-nox --model llama3.1${NC}"
 echo ""
 echo -e "  ${DIM}Anderes Modell beim Setup:${NC}"
 echo -e "  ${DIM}CLAWDASH_MODEL=llama3.1 ./install.sh${NC}"
@@ -125,6 +125,6 @@ if [[ -t 0 ]]; then
   read -rp "  Jetzt starten? [J/n] " REPLY
   REPLY="${REPLY:-J}"
   if [[ "$REPLY" =~ ^[JjYy]$ ]]; then
-    exec .venv/bin/clawdash --model "${CLAWDASH_MODEL}"
+    exec .venv/bin/mimi-nox --model "${CLAWDASH_MODEL}"
   fi
 fi
