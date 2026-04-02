@@ -251,10 +251,11 @@ async def test_check_connection_success():
         instance.list.return_value = list_response
         mock_class.return_value = instance
 
-        connected, msg = await check_ollama_connection("llama3.2")
+        connected, msg, available = await check_ollama_connection("llama3.2")
 
     assert connected is True
     assert "connected" in msg
+    assert isinstance(available, list)
 
 
 async def test_check_connection_offline():
@@ -263,7 +264,7 @@ async def test_check_connection_offline():
         instance.list.side_effect = ConnectionRefusedError()
         mock_class.return_value = instance
 
-        connected, msg = await check_ollama_connection("llama3.2")
+        connected, msg, available = await check_ollama_connection("llama3.2")
 
     assert connected is False
     assert "offline" in msg
@@ -275,6 +276,7 @@ async def test_check_connection_timeout():
         instance.list.side_effect = asyncio.TimeoutError()
         mock_class.return_value = instance
 
-        connected, msg = await check_ollama_connection("llama3.2")
+        connected, msg, available = await check_ollama_connection("llama3.2")
 
     assert connected is False
+    assert available == []

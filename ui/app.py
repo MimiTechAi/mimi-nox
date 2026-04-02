@@ -16,6 +16,7 @@ Design rules enforced here:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from pathlib import Path
 
 from textual import work
@@ -88,8 +89,8 @@ class ClawDashApp(App):
         self._load_session_and_greet()
         self.query_one(HistoryInput).focus_input()
 
-        # Check Ollama connection asynchronously
-        self._check_connection()
+        # Check Ollama connection asynchronously (non-blocking)
+        self.run_worker(self._async_check_connection(), exclusive=False)
 
     def _load_session_and_greet(self) -> None:
         chat = self.query_one(ChatView)
@@ -109,40 +110,57 @@ class ClawDashApp(App):
         if count > 0:
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    f"🌲 ClawDash {__edition__} — Welcome back. "
-                    f"Last session restored ({count} messages, {when}).\n"
-                    f"   Ctrl+R to reset · q to quit",
+                    f"🌲 ClawDash {__edition__} — Willkommen zurück.\n"
+                    f"   Letzte Session: {count} Nachrichten, {when}\n"
+                    f"   Ctrl+R = Reset  ·  Ctrl+L = Clear  ·  q = Quit",
                     style="welcome",
                 )
             )
         else:
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    f"🌲 ClawDash {__edition__} — No previous session.\n"
-                    f"   Try /post, /debug, /idea, /explain, /commit\n"
-                    f"   Ctrl+R to reset · q to quit",
+                    f"🌲 ClawDash {__edition__} — Bereit.\n"
+                    f"   Slash-Commands: /post  /debug  /idea  /explain  /commit\n"
+                    f"   Tab = Autocomplete  ·  ↑↓ = History  ·  q = Quit",
                     style="welcome",
                 )
             )
 
-    def _check_connection(self) -> None:
-        """Non-blocking Ollama ping on startup."""
-        self._run_connection_check()
-
-    def _run_connection_check(self) -> None:
-        """Use Textual's run_worker to async-ping Ollama without blocking the UI."""
-        self.run_worker(self._async_check_connection(), exclusive=False)
-
     async def _async_check_connection(self) -> None:
-        connected, status_text = await check_ollama_connection(self.model)
-        status_bar = self.query_one(StatusBar)
-        status_bar.post_message(
+        """Ping Ollama on startup, show model list if model not found."""
+        connected, status_text, available = await check_ollama_connection(self.model)
+
+        self.query_one(StatusBar).post_message(
             StatusBar.SetStatus(connected=connected, model=self.model)
         )
+
+        chat = self.query_one(ChatView)
+
         if not connected:
-            self.query_one(ChatView).post_message(
+            chat.post_message(
                 ChatView.AddSystemMessage(
-                    "⚠  Ollama not running. Start it with:  ollama serve",
+                    "⚠  Ollama nicht erreichbar.\n"
+                    "   Starte Ollama mit:  ollama serve\n"
+                    "   Download:           https://ollama.com",
+                    style="error-msg",
+                )
+            )
+            return
+
+        # Model not pulled locally → show available options
+        model_present = any(self.model in name for name in available)
+        if not model_present:
+            model_list = "\n".join(
+                f"   • {name}" for name in available[:10]
+            ) or "   (keine Modelle installiert)"
+            chat.post_message(
+                ChatView.AddSystemMessage(
+                    f"⚠  Modell '{self.model}' nicht lokal vorhanden.\n\n"
+                    f"   Installiere es mit:\n"
+                    f"   ollama pull {self.model}\n\n"
+                    f"   Oder starte mit einem vorhandenen Modell:\n"
+                    f"{model_list}\n\n"
+                    f"   Beispiel:  clawdash --model {available[0] if available else 'llama3.1'}",
                     style="error-msg",
                 )
             )
@@ -195,25 +213,50 @@ class ClawDashApp(App):
             full_response += chunk
             chat.post_message(ChatView.AppendChunk(chunk))
 
+        def on_loading_hint() -> None:
+            """Called when model takes >15s to produce first token (loading from disk)."""
+            chat.post_message(
+                ChatView.AddSystemMessage(
+                    f"⏳ Modell '{self.model}' wird gerade geladen…\n"
+                    f"   Große Modelle (>4GB) brauchen beim ersten Aufruf 30-90s.\n"
+                    f"   Bitte warten.",
+                    style="fallback-hint",
+                )
+            )
+
         def on_fallback() -> None:
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    "↻ Streaming failed, retrying without stream…",
+                    "↻ Streaming fehlgeschlagen, versuche ohne Stream…",
                     style="fallback-hint",
                 )
             )
 
         try:
-            full_response = await send_message_safe(
-                model=self.model,
-                history=self._session,
-                on_chunk=on_chunk,
-                on_fallback=on_fallback,
+            # Wrap in loading-hint task: if first token takes > 15s, show hint
+            hint_task = asyncio.create_task(
+                self._loading_hint_after_delay(on_loading_hint, delay=15.0)
             )
+
+            try:
+                full_response = await send_message_safe(
+                    model=self.model,
+                    history=self._session,
+                    on_chunk=on_chunk,
+                    on_fallback=on_fallback,
+                    on_loading_hint=on_loading_hint,
+                )
+            finally:
+                hint_task.cancel()
+                try:
+                    await hint_task
+                except asyncio.CancelledError:
+                    pass
+
         except OllamaNotReachableError:
             status.post_message(
                 StatusBar.SetError(
-                    "Ollama not running. Start with: ollama serve"
+                    "Ollama nicht erreichbar – starte mit: ollama serve"
                 )
             )
             # Remove the user message we added optimistically
@@ -221,15 +264,16 @@ class ClawDashApp(App):
                 self._session.pop()
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    "⚠  Ollama not running. Start with:  ollama serve",
+                    "⚠  Ollama nicht erreichbar.  Starte mit:  ollama serve",
                     style="error-msg",
                 )
             )
         except OllamaModelNotFoundError as exc:
-            status.post_message(StatusBar.SetError(f"Model not found: {exc.model}"))
+            status.post_message(StatusBar.SetError(f"Modell nicht gefunden: {exc.model}"))
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    f"⚠  Model '{exc.model}' not found. Run:  ollama pull {exc.model}",
+                    f"⚠  Modell '{exc.model}' nicht vorhanden.\n"
+                    f"   Installiere es mit:  ollama pull {exc.model}",
                     style="error-msg",
                 )
             )
@@ -238,10 +282,10 @@ class ClawDashApp(App):
             pass
         except Exception as exc:
             # Unknown error – show in UI, never crash
-            status.post_message(StatusBar.SetError(f"Error: {exc}"))
+            status.post_message(StatusBar.SetError(f"Fehler: {exc}"))
             chat.post_message(
                 ChatView.AddSystemMessage(
-                    f"⚠  Unexpected error: {exc}",
+                    f"⚠  Unerwarteter Fehler: {exc}",
                     style="error-msg",
                 )
             )
@@ -257,6 +301,14 @@ class ClawDashApp(App):
             status.post_message(StatusBar.SetStreaming(False))
             hist_input.enable()
 
+    @staticmethod
+    async def _loading_hint_after_delay(
+        callback: Callable[[], None], delay: float
+    ) -> None:
+        """Helper: call callback after delay seconds (cancelled if model responds first)."""
+        await asyncio.sleep(delay)
+        callback()
+
     # ── Actions ───────────────────────────────────────────────────────────────
 
     def action_reset_session(self) -> None:
@@ -267,7 +319,7 @@ class ClawDashApp(App):
         chat.clear_display()
         chat.post_message(
             ChatView.AddSystemMessage(
-                "🌲 Session reset. Starting fresh.",
+                "🌲 Session zurückgesetzt. Frischer Start.",
                 style="system-msg",
             )
         )
