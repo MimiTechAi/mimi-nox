@@ -24,6 +24,7 @@ from core.chat import (
     check_ollama_connection,
     chat_with_tools,
 )
+from core.react import react_loop, ReActStep
 from core.tools import ShellConfirmationRequired
 from core.swarm import run_swarm
 from core.commands import extract_swarm_task, is_swarm_command, resolve_command
@@ -331,14 +332,26 @@ class ClawDashApp(App):
                     )
                 )
 
+            # ── on_step: zeigt Revisions-Hinweis in UI
+            def on_react_step(step: ReActStep) -> None:
+                if step.was_revised:
+                    chat.post_message(
+                        ChatView.AddSystemMessage(
+                            f"🔄 Reflexion: Antwort wird verbessert\n"
+                            f"   Grund: {step.reflexion.reason[:100]}",
+                            style="tool-call",
+                        )
+                    )
+
             try:
-                full_response = await chat_with_tools(
+                full_response = await react_loop(
+                    question=self._pending_history[-1]["content"] if self._pending_history else "",
                     model=self.model,
-                    history=self._pending_history,
+                    context=self._pending_history[:-1],
                     on_chunk=on_chunk,
                     on_tool_start=on_tool_start,
                     on_tool_done=on_tool_done,
-                    on_loading_hint=on_loading_hint,
+                    on_step=on_react_step,
                 )
             finally:
                 hint_task.cancel()
