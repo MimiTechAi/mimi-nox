@@ -100,9 +100,19 @@ if [[ ! -d ".venv" ]]; then
   info "Erstelle Virtual Environment..."
   "$PYTHON" -m venv .venv
 fi
-info "Installiere Dependencies..."
+info "Installiere Dependencies (inkl. chromadb – kann 1-2 Min dauern)..."
 .venv/bin/pip install -q -e "." 2>&1 | tail -3
-ok "Dependencies installiert"
+ok "Dependencies installiert (ddgs, chromadb, textual, ollama)"
+
+# ── 5b. nomic-embed-text für Memory ──────────────────────────────────────────
+step "Embedding-Modell für Memory"
+if ollama show "nomic-embed-text" >/dev/null 2>&1; then
+  ok "nomic-embed-text bereits vorhanden"
+else
+  info "Lade nomic-embed-text (~274 MB) für persistentes Memory..."
+  ollama pull nomic-embed-text
+  ok "nomic-embed-text bereit"
+fi
 
 # ── 6. Fertig ─────────────────────────────────────────────────────────────────
 echo ""

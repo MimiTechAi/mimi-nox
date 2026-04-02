@@ -25,7 +25,7 @@ from core.chat import (
     chat_with_tools,
     send_message_safe,
 )
-from core.tools import ShellConfirmationRequired, execute_confirmed_shell
+from core.tools import ShellConfirmationRequired
 from core.swarm import run_swarm
 from core.commands import extract_swarm_task, is_swarm_command, resolve_command
 from core.session import (
@@ -36,6 +36,10 @@ from core.session import (
     was_session_corrupt,
 )
 from core.types import Message
+from core.memory import Memory
+from core.profile import UserProfile, load_profile
+from core.corrections import CorrectionJournal
+from core.skills import SkillLoader
 from ui.widgets import ChatView, HistoryInput, StatusBar
 
 
@@ -65,6 +69,11 @@ class ClawDashApp(App):
         self.model = model
         self._reset_on_start = reset
         self._session: list[Message] = []
+        # Phase 2: Memory + Skills + Profile (lazy init)
+        self._memory: Memory | None = None
+        self._profile: UserProfile | None = None
+        self._corrections: CorrectionJournal | None = None
+        self._skill_loader: SkillLoader | None = None
 
     # ── Layout ───────────────────────────────────────────────────────────────
 
@@ -77,9 +86,18 @@ class ClawDashApp(App):
     # ── Startup ──────────────────────────────────────────────────────────────
 
     def on_mount(self) -> None:
-        """Called when the app is ready. Load session and connect to Ollama."""
+        """Called when the app is ready. Load session, init memory, connect to Ollama."""
         if self._reset_on_start:
             delete_session()
+
+        # Lazy init Phase 2 modules (silently – no crash if unavailable)
+        try:
+            self._memory = Memory()
+            self._profile = load_profile()
+            self._corrections = CorrectionJournal()
+            self._skill_loader = SkillLoader()
+        except Exception:
+            pass  # Memory unavailable – app still works
 
         self._load_session_and_greet()
         self.query_one(HistoryInput).focus_input()
@@ -184,13 +202,41 @@ class ClawDashApp(App):
             self._run_swarm(task)
             return
 
-        # Normal chat: resolve slash commands before sending
+        # ── Skill-Trigger auswerten (/research, /files, /review, /write, /shell)
         resolved = resolve_command(user_input)
+        skill_system_prompt: str | None = None
+        if user_input.startswith("/") and self._skill_loader is not None:
+            skill = self._skill_loader.resolve_trigger(user_input.split()[0])
+            if skill is not None:
+                skill_system_prompt = skill.system_prompt
+                # Skill-Kontext als erste Nachricht falls Session leer
+                self.query_one(ChatView).post_message(
+                    ChatView.AddSystemMessage(
+                        f"⚡ Skill aktiv: {skill.name}",
+                        style="tool-call",
+                    )
+                )
 
-        # Add user message to session
+        # ── Korrektur erkennen ("Das ist falsch:" oder "Das stimmt nicht:")
+        correction_keywords = ("das ist falsch", "das stimmt nicht", "falsch:", "nicht korrekt")
+        if any(kw in user_input.lower() for kw in correction_keywords):
+            if self._corrections is not None:
+                self._corrections.add(
+                    wrong="(letzte Antwort)",
+                    correct=user_input,
+                )
+
+        # ── Session aufbauen
+        messages: list[Message] = list(self._session)
+
+        # Skill-System-Prompt voranstellen wenn Skill aktiv
+        if skill_system_prompt:
+            messages = [Message(role="system", content=skill_system_prompt)] + messages
+
+        # Nutzer-Nachricht hinzufügen
         self._session.append(Message(role="user", content=resolved))
 
-        # Show original input in UI
+        # Show in UI
         chat = self.query_one(ChatView)
         chat.post_message(ChatView.AddUserMessage(user_input))
 
@@ -225,20 +271,12 @@ class ClawDashApp(App):
             chat.post_message(ChatView.AppendChunk(chunk))
 
         def on_loading_hint() -> None:
-            """Called when model takes >15s to produce first token (loading from disk)."""
+            """Wird aufgerufen wenn Modell >15s braucht (Laden von Disk)."""
             chat.post_message(
                 ChatView.AddSystemMessage(
                     f"⏳ Modell '{self.model}' wird gerade geladen…\n"
                     f"   Große Modelle (>4GB) brauchen beim ersten Aufruf 30-90s.\n"
                     f"   Bitte warten.",
-                    style="fallback-hint",
-                )
-            )
-
-        def on_fallback() -> None:
-            chat.post_message(
-                ChatView.AddSystemMessage(
-                    "↻ Streaming fehlgeschlagen, versuche ohne Stream…",
                     style="fallback-hint",
                 )
             )
@@ -336,12 +374,26 @@ class ClawDashApp(App):
                 )
             )
         else:
-            # Success – persist assistant message
+            # Success – persist assistant + store in memory
             if full_response:
                 self._session.append(
                     Message(role="assistant", content=full_response)
                 )
                 save_session(self._session)
+                # Phase 2: wichtige Antworten persistent im Memory speichern
+                if self._memory is not None:
+                    try:
+                        # Letzte User-Frage + Antwort zusammen speichern
+                        last_user = next(
+                            (m["content"] for m in reversed(self._session)
+                             if m["role"] == "user"), ""
+                        )
+                        self._memory.store(
+                            f"Q: {last_user}\nA: {full_response[:500]}",
+                            metadata={"model": self.model},
+                        )
+                    except Exception:
+                        pass  # Memory-Fehler crasht nie die App
         finally:
             chat.post_message(ChatView.FinalizeAssistantMessage())
             status.post_message(StatusBar.SetStreaming(False))
