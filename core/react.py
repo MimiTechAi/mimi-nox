@@ -5,23 +5,23 @@ core/react.py
 ReAct = Reason + Act + Observe + Reflect
 
 Ablauf:
-  1. Antwort generieren (via chat_with_tools – inkl. Tool-Calls)
+  1. Antwort generieren (via chat_with_tools – inkl. Tool-Calls) → intern puffern
   2. Reflexion: Ist die Antwort vollständig und korrekt?
-  3. Falls needs_revision=True UND Revisionen < MAX_REVISIONS:
-     → Neu generieren mit Kritik als Kontext
-  4. Finale Antwort zurückgeben
+  3. Falls needs_revision=True UND unter MAX_REVISIONS: Revision vorbereiten, goto 1
+  4. Finale Antwort via on_chunk streamen + zurückgeben
 
 Design-Entscheidungen:
-  - MAX_REVISIONS = 2 (nicht mehr, klares Limit)
-  - Reflexion via separatem, schnellem LLM-Aufruf ohne Tools
-  - reflect() ist unabhängig testbar (kein Seiteneffekt)
-  - react_loop() ist thin wrapper über chat_with_tools
-  - on_step Callback für UI-Transparenz (zeigt Revisionen an)
+  - MAX_REVISIONS = 2 (streng, kein infinite loop)
+  - Alle Zwischen-Iterationen: gepuffert (kein Streaming in UI)
+  - Nur finale Antwort wird via on_chunk an UI gesendet
+  - reflect() wird NICHT nach der letzten Iteration aufgerufen (Performance)
+  - on_step Callback nach jeder Iteration für volle Transparenz
+  - reflect(): fail-safe (Exception → needs_revision=False)
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable
 
 import ollama
@@ -40,14 +40,14 @@ REFLEXION_SYSTEM_PROMPT = """Du bist ein präziser Qualitätsprüfer für KI-Ant
 Deine Aufgabe: Beurteile ob eine gegebene Antwort korrekt und vollständig ist.
 
 Antworte NUR mit:
-  - Einer Bewertung (1-2 Sätze)
+  - Einer kurzen Bewertung (1-2 Sätze)
   - Genau einer dieser Zeilen:
-      REVISION: JA   (wenn Antwort unvollständig/falsch/irreführend)
+      REVISION: JA   (wenn Antwort unvollständig, falsch oder irreführend)
       REVISION: NEIN (wenn Antwort korrekt und ausreichend vollständig)
   - Falls JA: ein Satz Begründung nach "Grund: "
 
 Sei streng aber fair. Kurze Antworten die die Frage vollständig beantworten sind OK.
-"Ich weiß es nicht" ist IMMER eine schlechte Antwort wenn mehr möglich wäre.
+"Ich weiß es nicht" ist IMMER schlecht wenn Tools verfügbar sind.
 """
 
 
@@ -81,19 +81,18 @@ async def reflect(
     model: str,
 ) -> ReflexionResult:
     """
-    Bewertet eine Antwort via einem separaten LLM-Aufruf.
+    Bewertet eine Antwort via separatem LLM-Aufruf.
 
-    Nutzt kein Tool-Calling — nur puren Text-Output.
-    Schnell, deterministisch, für post-hoc Qualitätsprüfung.
+    Kein Tool-Calling — purer Text-Output.
+    Fail-safe: bei jedem Fehler → needs_revision=False (Antwort trotzdem ausgeben).
 
     Args:
         response: Die zu bewertende Antwort
         question: Die ursprüngliche Frage
-        model:    Ollama-Modell (dasselbe wie für die Antwort)
+        model:    Ollama-Modell
 
     Returns:
         ReflexionResult(needs_revision=bool, reason=str)
-        Gibt bei Fehler immer needs_revision=False zurück (fail safe).
     """
     client = ollama.AsyncClient()
 
@@ -114,7 +113,6 @@ async def reflect(
         )
         content: str = raw.message.content or ""
     except Exception:
-        # Bei Fehler: keine Revision (fail safe – Antwort trotzdem ausgeben)
         return ReflexionResult(needs_revision=False, reason="")
 
     return _parse_reflexion(content)
@@ -122,20 +120,17 @@ async def reflect(
 
 def _parse_reflexion(content: str) -> ReflexionResult:
     """
-    Parst den Reflexions-Output.
-
-    Erwartet "REVISION: JA" oder "REVISION: NEIN" im Text.
-    Fällt auf needs_revision=False zurück wenn keine eindeutige Aussage.
+    Parst Reflexions-Output.
+    Erwartet 'REVISION: JA' oder 'REVISION: NEIN'.
+    Fällt auf needs_revision=False zurück wenn kein klares Signal.
     """
     upper = content.upper()
 
     if "REVISION: JA" in upper or "REVISION:JA" in upper:
-        # Begründung extrahieren
         reason_match = re.search(r"Grund:\s*(.+)", content, re.IGNORECASE)
-        reason = reason_match.group(1).strip() if reason_match else content[:100]
+        reason = reason_match.group(1).strip() if reason_match else content[:120].strip()
         return ReflexionResult(needs_revision=True, reason=reason)
 
-    # "REVISION: NEIN" oder alles andere → keine Revision nötig
     return ReflexionResult(needs_revision=False, reason="")
 
 
@@ -155,59 +150,83 @@ async def react_loop(
     """
     ReAct-Loop mit Reflexions-basierter Selbstkorrektur.
 
-    Ablauf pro Iteration:
-      1. chat_with_tools() → Antwort (inkl. Tool-Calls wenn nötig)
-      2. reflect()         → Ist die Antwort gut genug?
-      3. Falls nicht:      → Neuer Versuch mit Kritik als Kontext
-      4. nach MAX_REVISIONS: → Beste bisherige Antwort ausgeben
+    GARANTIEN:
+      - Terminiert immer (max MAX_REVISIONS + 1 Iterationen)
+      - on_chunk wird NUR für die finale Antwort aufgerufen (keine Doppelausgabe)
+      - reflect() wird NICHT nach der letzten Iteration aufgerufen (Performance)
+      - Alle Exceptions (OllamaNotReachable, OllamaModelNotFound, Shell) propagieren
+
+    Ablauf:
+      Iteration 1..MAX_REVISIONS:
+        a) chat_with_tools() → Antwort intern puffern (kein on_chunk)
+        b) reflect() → needs_revision?
+        c) Ja → Revision-Kontext aufbauen, weiter
+        d) Nein → finale Antwort, Abbruch
+      Iteration MAX_REVISIONS+1 (Sicherheitsnetz):
+        a) chat_with_tools() → Antwort via on_chunk streamen (letzte Chance)
+        b) reflect() NICHT mehr aufrufen
 
     Args:
-        question:      Die User-Frage
+        question:      User-Frage (letztes Element der History)
         model:         Ollama-Modell
-        context:       Optionale Konversations-History (Messages)
-        on_step:       Callback nach jeder Iteration
-        on_chunk:      Streaming Callback (letzte Iteration)
-        on_tool_start: Tool-Start Callback
-        on_tool_done:  Tool-Done Callback
+        context:       History OHNE die aktuelle Frage
+        on_step:       Callback nach jeder Iteration (Transparenz)
+        on_chunk:      Streaming Callback NUR für finale Antwort
+        on_tool_start: Tool-Start Callback (alle Iterationen)
+        on_tool_done:  Tool-Done Callback (alle Iterationen)
 
     Returns:
         Beste generierte Antwort als String.
 
     Raises:
-        OllamaNotReachableError:  Ollama nicht erreichbar
-        OllamaModelNotFoundError: Modell nicht installiert
+        OllamaNotReachableError:   Ollama nicht erreichbar
+        OllamaModelNotFoundError:  Modell nicht installiert
+        ShellConfirmationRequired: Shell braucht User-Bestätigung
     """
     history: list[dict] = list(context or [])
     history.append({"role": "user", "content": question})
 
     last_answer = ""
-    chunks_buffer: list[str] = []
+    max_iterations = MAX_REVISIONS + 1  # initial + max revisions
 
-    for iteration in range(1, MAX_REVISIONS + 2):  # +2: initial + MAX_REVISIONS
-        is_last_iteration = iteration > MAX_REVISIONS
-        chunks_buffer = []
+    for iteration in range(1, max_iterations + 1):
+        is_final_iteration = iteration == max_iterations
 
-        # Streaming nur in der letzten Iteration an on_chunk weiterleiten
-        def _on_chunk(chunk: str, _iter: int = iteration) -> None:
-            chunks_buffer.append(chunk)
-            if _iter > 1 and on_chunk is not None:
-                on_chunk(chunk)
+        # ── Streaming-Strategie ─────────────────────────────────────────────
+        # Zwischen-Iterationen: intern puffern, KEIN on_chunk an UI
+        # Letzte Iteration (Sicherheitsnetz): on_chunk direkt
+        # Normale finale Iteration (reflexion=False): Replay nach dem Loop
+        iteration_buffer: list[str] = []
 
-        # Erste Iteration: kein on_chunk (wir wollen erst reflektieren)
-        # Letzte Iteration: on_chunk weiterleiten für Streaming
-        chunk_cb = on_chunk if is_last_iteration else _on_chunk
+        def _buffer_chunk(chunk: str, buf: list[str] = iteration_buffer) -> None:
+            buf.append(chunk)
 
+        chunk_cb = on_chunk if is_final_iteration else _buffer_chunk
+
+        # ── LLM-Aufruf ─────────────────────────────────────────────────────
         answer = await chat_with_tools(
             model=model,
             history=history,
-            on_chunk=chunk_cb if not is_last_iteration else (on_chunk or _on_chunk),
+            on_chunk=chunk_cb,
             on_tool_start=on_tool_start,
             on_tool_done=on_tool_done,
         )
 
-        last_answer = answer or "".join(chunks_buffer)
+        last_answer = answer or "".join(iteration_buffer)
 
-        # Reflexion
+        # ── Reflexion (NICHT nach letzter Iteration — Performance) ──────────
+        if is_final_iteration:
+            # Sicherheitsnetz: Antwort bereits via on_chunk gestreamt
+            step = ReActStep(
+                iteration=iteration,
+                answer=last_answer,
+                reflexion=ReflexionResult(needs_revision=False, reason=""),
+                was_revised=True,
+            )
+            if on_step is not None:
+                on_step(step)
+            break
+
         reflexion = await reflect(
             response=last_answer,
             question=question,
@@ -220,19 +239,17 @@ async def react_loop(
             reflexion=reflexion,
             was_revised=(iteration > 1),
         )
-
         if on_step is not None:
             on_step(step)
 
-        # Abbruch-Bedingungen
         if not reflexion.needs_revision:
+            # Antwort ist gut → via on_chunk an UI senden (Replay des Puffers)
+            if on_chunk is not None:
+                for chunk in iteration_buffer:
+                    on_chunk(chunk)
             break
 
-        if is_last_iteration:
-            # Maximale Revisionen erreicht – beste Antwort zurückgeben
-            break
-
-        # Revision vorbereiten: Kritik als Kontext hinzufügen
+        # ── Revision vorbereiten ──────────────────────────────────────────
         history.append({"role": "assistant", "content": last_answer})
         history.append({
             "role": "user",

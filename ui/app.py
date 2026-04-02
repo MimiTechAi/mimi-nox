@@ -332,22 +332,33 @@ class ClawDashApp(App):
                     )
                 )
 
-            # ── on_step: zeigt Revisions-Hinweis in UI
+            # ── on_step: zeigt Revisions-Hinweis BEVOR neue Antwort kommt
             def on_react_step(step: ReActStep) -> None:
-                if step.was_revised:
+                """Wird VOR dem nächsten LLM-Aufruf aufgerufen (on_step nach reflect)."""
+                if step.reflexion.needs_revision:
+                    # Hinweis: neue Antwort kommt gleich
                     chat.post_message(
                         ChatView.AddSystemMessage(
-                            f"🔄 Reflexion: Antwort wird verbessert\n"
-                            f"   Grund: {step.reflexion.reason[:100]}",
+                            f"🔄 Reflexion: Antwort unzureichend – wird verbessert…\n"
+                            f"   Grund: {step.reflexion.reason[:120]}",
                             style="tool-call",
                         )
                     )
 
+            # Frage sicher aus pending_history extrahieren
+            if self._pending_history:
+                last_msg = self._pending_history[-1]
+                question = last_msg.get("content", "") if isinstance(last_msg, dict) else ""
+                context = self._pending_history[:-1]
+            else:
+                question = ""
+                context = []
+
             try:
                 full_response = await react_loop(
-                    question=self._pending_history[-1]["content"] if self._pending_history else "",
+                    question=question,
                     model=self.model,
-                    context=self._pending_history[:-1],
+                    context=context,
                     on_chunk=on_chunk,
                     on_tool_start=on_tool_start,
                     on_tool_done=on_tool_done,
