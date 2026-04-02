@@ -23,7 +23,6 @@ from core.chat import (
     OllamaNotReachableError,
     check_ollama_connection,
     chat_with_tools,
-    send_message_safe,
 )
 from core.tools import ShellConfirmationRequired
 from core.swarm import run_swarm
@@ -74,6 +73,9 @@ class ClawDashApp(App):
         self._profile: UserProfile | None = None
         self._corrections: CorrectionJournal | None = None
         self._skill_loader: SkillLoader | None = None
+        # Vollständige History für nächsten _stream_response Call
+        # (inkl. Skill-System-Prompt + Profil + Korrekturen)
+        self._pending_history: list[Message] = []
 
     # ── Layout ───────────────────────────────────────────────────────────────
 
@@ -226,15 +228,34 @@ class ClawDashApp(App):
                     correct=user_input,
                 )
 
-        # ── Session aufbauen
-        messages: list[Message] = list(self._session)
+        # ── Vollständige History aufbauen (einschließlich Kontext-Schichten)
+        pending: list[Message] = []
 
-        # Skill-System-Prompt voranstellen wenn Skill aktiv
+        # Schicht 1: Profil-Kontext (wenn Profil gefüllt)
+        if self._profile is not None:
+            ctx = self._profile.to_context_string()
+            if ctx:
+                pending.append(Message(role="system", content=ctx))
+
+        # Schicht 2: Korrektions-Kontext (vermeidet Fehler-Wiederholung)
+        if self._corrections is not None:
+            corr_ctx = self._corrections.to_context_string(max_items=3)
+            if corr_ctx:
+                pending.append(Message(role="system", content=corr_ctx))
+
+        # Schicht 3: Skill-System-Prompt (überschreibt Standard-Verhalten)
         if skill_system_prompt:
-            messages = [Message(role="system", content=skill_system_prompt)] + messages
+            pending.append(Message(role="system", content=skill_system_prompt))
+
+        # Schicht 4: Konversations-History
+        pending.extend(self._session)
 
         # Nutzer-Nachricht hinzufügen
         self._session.append(Message(role="user", content=resolved))
+        pending.append(Message(role="user", content=resolved))
+
+        # Für den Worker speichern
+        self._pending_history = pending
 
         # Show in UI
         chat = self.query_one(ChatView)
@@ -313,7 +334,7 @@ class ClawDashApp(App):
             try:
                 full_response = await chat_with_tools(
                     model=self.model,
-                    history=self._session,
+                    history=self._pending_history,
                     on_chunk=on_chunk,
                     on_tool_start=on_tool_start,
                     on_tool_done=on_tool_done,
