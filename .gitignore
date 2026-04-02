@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# Session data (user-specific)
+~/.clawdash/
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

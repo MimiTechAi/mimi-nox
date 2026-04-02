@@ -235,11 +235,20 @@ async def test_safe_not_reachable_still_raises():
 
 
 async def test_check_connection_success():
+    """
+    ollama 0.4+ returns pydantic models from .list().
+    The mock must expose a .models attribute with objects that have .model attribute.
+    """
+    # Build a minimal mock that looks like ollama's ListResponse pydantic object
+    model_entry = MagicMock()
+    model_entry.model = "llama3.2:latest"
+
+    list_response = MagicMock()
+    list_response.models = [model_entry]
+
     with patch("core.chat.ollama.AsyncClient") as mock_class:
         instance = AsyncMock()
-        instance.list.return_value = {
-            "models": [{"name": "llama3.2:latest"}]
-        }
+        instance.list.return_value = list_response
         mock_class.return_value = instance
 
         connected, msg = await check_ollama_connection("llama3.2")

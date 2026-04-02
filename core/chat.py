@@ -142,15 +142,24 @@ async def check_ollama_connection(model: str) -> tuple[bool, str]:
     """
     Quick connectivity check. Returns (is_connected, status_message).
     Safe to call on startup without raising.
+    
+    Note: ollama 0.4+ returns pydantic models, not dicts.
+    We use attribute access (result.models, m.model) accordingly.
     """
     try:
         client = ollama.AsyncClient()
-        # List models as a lightweight ping
         result = await asyncio.wait_for(client.list(), timeout=3.0)
-        available = [m["name"] for m in result.get("models", [])]
-        if any(model in name for name in available):
+        # result is a ListResponse pydantic model
+        # Each entry has a .model attribute (full name like 'llama3.2:latest')
+        available_names = []
+        for m in result.models:
+            name = getattr(m, "model", None) or getattr(m, "name", "")
+            available_names.append(str(name))
+        
+        model_pulled = any(model in name for name in available_names)
+        if model_pulled:
             return True, f"connected · {model}"
-        return True, f"connected · {model} (not pulled)"
+        return True, f"connected · {model} (not pulled – run: ollama pull {model})"
     except asyncio.TimeoutError:
         return False, "timeout"
     except Exception:

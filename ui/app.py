@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Header
@@ -129,7 +130,8 @@ class ClawDashApp(App):
         self._run_connection_check()
 
     def _run_connection_check(self) -> None:
-        asyncio.get_event_loop().create_task(self._async_check_connection())
+        """Use Textual's run_worker to async-ping Ollama without blocking the UI."""
+        self.run_worker(self._async_check_connection(), exclusive=False)
 
     async def _async_check_connection(self) -> None:
         connected, status_text = await check_ollama_connection(self.model)
@@ -168,9 +170,7 @@ class ClawDashApp(App):
 
     # ── Streaming Worker ──────────────────────────────────────────────────────
 
-    from textual import work  # type: ignore[attr-defined]
-
-    @work(exclusive=True, thread=False)  # type: ignore[misc]
+    @work(exclusive=True, thread=False)
     async def _stream_response(self) -> None:
         """
         Async Textual worker. Streams Ollama response token by token.

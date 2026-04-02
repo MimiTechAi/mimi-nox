@@ -4,8 +4,14 @@ ClawDash Widgets – BlackForest Edition
 Three focused, reusable Textual widgets:
 
     HistoryInput  – Input with ↑/↓ history navigation + command completions
-    ChatView      – Scrollable RichLog for chat messages, streaming-aware
+    ChatView      – Scrollable chat display with live streaming via Static widget
     StatusBar     – Live status: Ollama connection · model · tagline
+
+Streaming architecture:
+    - RichLog holds all COMPLETED messages (user + finalized assistant)
+    - Static (#streaming-area) holds the CURRENT streaming assistant response
+    - On FinalizeAssistantMessage: flush Static → RichLog, clear Static
+    This avoids the RichLog.write(end="") API which doesn't exist.
 """
 
 from __future__ import annotations
@@ -16,7 +22,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Input, RichLog, Static
 
-from core.commands import get_completions, get_command_help
+from core.commands import get_completions
 
 
 # ===========================================================================
@@ -52,7 +58,7 @@ class HistoryInput(Widget):
 
     _history: list[str]
     _history_index: int  # len(history) = "no history entry active"
-    _saved_draft: str  # saves current text when navigating up
+    _saved_draft: str    # saves current text when navigating up
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
@@ -128,7 +134,6 @@ class HistoryInput(Widget):
             input_widget.value = completions[0] + " "
             input_widget.cursor_position = len(input_widget.value)
         elif len(completions) > 1:
-            # Show completions in hint
             hint = self.query_one("#command-hint", Static)
             hint.update("  ".join(completions))
             hint.add_class("visible")
@@ -161,7 +166,7 @@ class HistoryInput(Widget):
         if not self._history or self._history[-1] != value:
             self._history.append(value)
 
-        # Reset index to "no active history entry"
+        # Reset index
         self._history_index = len(self._history)
         self._saved_draft = ""
 
@@ -197,16 +202,33 @@ class HistoryInput(Widget):
 
 class ChatView(Widget):
     """
-    Scrollable chat display using RichLog.
+    Scrollable chat display.
 
-    Supports:
-    - Rendering user messages (forest neon green)
-    - Streaming assistant responses chunk-by-chunk
-    - System/welcome messages
-    - Error messages
+    Architecture:
+        - RichLog (#chat-log): holds all completed messages
+        - Static (#streaming-area): shows the CURRENT streaming response live
+          Becomes visible during streaming, cleared+hidden after finalization.
+
+    This avoids the non-existent RichLog.write(end="") API.
     """
 
-    # ── Textual Messages (for post_message() from workers) ───────────────────
+    DEFAULT_CSS = """
+    ChatView {
+        layout: vertical;
+        height: 1fr;
+    }
+    #streaming-area {
+        display: none;
+        color: #a8c5a0;
+        padding: 0 1;
+        margin-top: 1;
+    }
+    #streaming-area.active {
+        display: block;
+    }
+    """
+
+    # ── Textual Messages ─────────────────────────────────────────────────────
 
     class AddUserMessage(TextualMessage):
         def __init__(self, text: str) -> None:
@@ -214,7 +236,7 @@ class ChatView(Widget):
             self.text = text
 
     class BeginAssistantMessage(TextualMessage):
-        """Signals start of a new assistant response (streaming begins)."""
+        """Signals start of a streaming assistant response."""
         pass
 
     class AppendChunk(TextualMessage):
@@ -223,27 +245,28 @@ class ChatView(Widget):
             self.chunk = chunk
 
     class FinalizeAssistantMessage(TextualMessage):
-        """Signals that streaming is complete."""
+        """Streaming complete – flush Static → RichLog."""
         pass
 
     class AddSystemMessage(TextualMessage):
         def __init__(self, text: str, style: str = "system-msg") -> None:
             super().__init__()
             self.text = text
-            self.style = style  # "welcome", "system-msg", "error-msg", "fallback-hint"
+            self.style = style
 
     # ── State ────────────────────────────────────────────────────────────────
 
-    _current_assistant_lines: list[str]
+    _accumulated_chunks: str
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self._current_assistant_lines = []
+        self._accumulated_chunks = ""
 
     def compose(self) -> ComposeResult:
         log = RichLog(id="chat-log", wrap=True, markup=True, highlight=False)
         log.can_focus = False
         yield log
+        yield Static("", id="streaming-area", markup=True)
 
     # ── Message Handlers ─────────────────────────────────────────────────────
 
@@ -255,24 +278,35 @@ class ChatView(Widget):
     def on_chat_view_begin_assistant_message(
         self, event: "ChatView.BeginAssistantMessage"
     ) -> None:
-        log = self.query_one("#chat-log", RichLog)
-        log.write(f"\n[bold #a8c5a0]Assistant[/bold #a8c5a0]")
-        self._current_assistant_lines = []
+        self._accumulated_chunks = ""
+        streaming = self.query_one("#streaming-area", Static)
+        streaming.update("[bold #a8c5a0]Assistant[/bold #a8c5a0]\n▌")
+        streaming.add_class("active")
 
     def on_chat_view_append_chunk(self, event: "ChatView.AppendChunk") -> None:
-        log = self.query_one("#chat-log", RichLog)
-        # Write chunk without newline prefix – build up the line
-        self._current_assistant_lines.append(event.chunk)
-        # Re-render the current line by writing only the new chunk
-        # RichLog.write() adds a newline per call, so we print inline slices
-        log.write(f"[#a8c5a0]{event.chunk}[/#a8c5a0]", end="")
+        self._accumulated_chunks += event.chunk
+        streaming = self.query_one("#streaming-area", Static)
+        # ▌ cursor at end gives streaming feel
+        streaming.update(
+            f"[bold #a8c5a0]Assistant[/bold #a8c5a0]\n"
+            f"[#a8c5a0]{self._accumulated_chunks}[/#a8c5a0]▌"
+        )
 
     def on_chat_view_finalize_assistant_message(
         self, event: "ChatView.FinalizeAssistantMessage"
     ) -> None:
-        log = self.query_one("#chat-log", RichLog)
-        log.write("")  # newline to end the streamed line
-        self._current_assistant_lines = []
+        # Hide streaming widget
+        streaming = self.query_one("#streaming-area", Static)
+        streaming.remove_class("active")
+        streaming.update("")
+
+        # Flush to RichLog as a permanent entry
+        if self._accumulated_chunks:
+            log = self.query_one("#chat-log", RichLog)
+            log.write(f"\n[bold #a8c5a0]Assistant[/bold #a8c5a0]")
+            log.write(f"[#a8c5a0]{self._accumulated_chunks}[/#a8c5a0]")
+
+        self._accumulated_chunks = ""
 
     def on_chat_view_add_system_message(
         self, event: "ChatView.AddSystemMessage"
@@ -292,6 +326,10 @@ class ChatView(Widget):
     def clear_display(self) -> None:
         """Clear the visual display (Ctrl+L). Session data is unaffected."""
         self.query_one("#chat-log", RichLog).clear()
+        streaming = self.query_one("#streaming-area", Static)
+        streaming.remove_class("active")
+        streaming.update("")
+        self._accumulated_chunks = ""
 
 
 # ===========================================================================
@@ -324,16 +362,16 @@ class StatusBar(Widget):
             super().__init__()
             self.message = message
 
-    # ── Reactives ────────────────────────────────────────────────────────────
+    # ── State ────────────────────────────────────────────────────────────────
 
-    _connected: reactive[bool] = reactive(False)
-    _model: reactive[str] = reactive("–")
-    _streaming: reactive[bool] = reactive(False)
-    _error: reactive[str] = reactive("")
+    _connected: bool = False
+    _model: str = "–"
+    _streaming: bool = False
+    _error: str = ""
 
     def compose(self) -> ComposeResult:
-        yield Static("", id="status-indicator")
-        yield Static("", id="status-model")
+        yield Static("", id="status-indicator", markup=True)
+        yield Static("", id="status-model", markup=True)
         yield Static(
             "[#2d4a2d]🌲 No cloud. No tracking. Straight from the Black Forest.[/#2d4a2d]",
             id="status-tagline",
@@ -346,6 +384,7 @@ class StatusBar(Widget):
         self._connected = event.connected
         self._model = event.model
         self._error = ""
+        self.remove_class("error")
         self._update_display()
 
     def on_status_bar_set_streaming(self, event: "StatusBar.SetStreaming") -> None:
@@ -371,20 +410,14 @@ class StatusBar(Widget):
 
         if self._error:
             indicator.update(f"[bold #ff6b35]⚠  {self._error}[/bold #ff6b35]")
-            indicator.add_class("offline")
             model_label.update("")
             return
 
-        self.remove_class("error")
-
         if self._streaming:
             indicator.update("[#a8c5a0]⏳ Generating…[/#a8c5a0]")
-            indicator.remove_class("offline")
         elif self._connected:
             indicator.update("[#39ff14]●  Ollama: connected[/#39ff14]")
-            indicator.remove_class("offline")
         else:
             indicator.update("[#ff6b35]✗  Ollama: offline[/#ff6b35]")
-            indicator.add_class("offline")
 
         model_label.update(f"[#5a7a5a]  │  {self._model}[/#5a7a5a]")
