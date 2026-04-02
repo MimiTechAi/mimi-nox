@@ -48,6 +48,9 @@ COMMANDS: dict[str, str] = {
         "Use the format: <type>(<scope>): <short description>\n\n"
         "Then add a brief body if needed. Changes:\n{input}"
     ),
+    # /swarm is handled specially by the App (triggers multi-agent pipeline)
+    # The template here is only used as a fallback usage hint.
+    "/swarm": "__swarm__:{input}",
 }
 
 # ---------------------------------------------------------------------------
@@ -60,7 +63,11 @@ _COMMAND_DESCRIPTIONS: dict[str, str] = {
     "/idea":    "Generate 5 startup ideas",
     "/explain": "Explain a concept simply",
     "/commit":  "Write a Git commit message",
+    "/swarm":   "Multi-agent parallel pipeline",
 }
+
+# Commands that trigger special app-level behaviour (not resolved to a prompt)
+SWARM_COMMANDS: frozenset[str] = frozenset({"/swarm"})
 
 
 def resolve_command(raw_input: str) -> str:
@@ -134,3 +141,19 @@ def is_command(text: str) -> bool:
     """Return True if text starts with a known slash command."""
     parts = text.strip().split(maxsplit=1)
     return bool(parts) and parts[0].lower() in COMMANDS
+
+
+def is_swarm_command(text: str) -> bool:
+    """Return True if text is a /swarm command (handled by swarm pipeline)."""
+    parts = text.strip().split(maxsplit=1)
+    return bool(parts) and parts[0].lower() in SWARM_COMMANDS
+
+
+def extract_swarm_task(text: str) -> str:
+    """
+    Extract the task from a /swarm command.
+    "/swarm Plan a REST API" → "Plan a REST API"
+    "/swarm" → ""  (caller should show usage hint)
+    """
+    parts = text.strip().split(maxsplit=1)
+    return parts[1].strip() if len(parts) > 1 else ""

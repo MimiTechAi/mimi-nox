@@ -31,7 +31,8 @@ from core.chat import (
     check_ollama_connection,
     send_message_safe,
 )
-from core.commands import resolve_command
+from core.swarm import run_swarm
+from core.commands import extract_swarm_task, is_swarm_command, resolve_command
 from core.session import (
     delete_session,
     load_last_session,
@@ -65,7 +66,7 @@ class ClawDashApp(App):
 
     # ── Init ─────────────────────────────────────────────────────────────────
 
-    def __init__(self, model: str = "llama3.2", reset: bool = False) -> None:
+    def __init__(self, model: str = "phi4-mini", reset: bool = False) -> None:
         super().__init__()
         self.model = model
         self._reset_on_start = reset
@@ -173,13 +174,29 @@ class ClawDashApp(App):
         if not user_input:
             return
 
-        # Resolve slash commands before sending
+        # /swarm → multi-agent pipeline (bypass normal chat)
+        if is_swarm_command(user_input):
+            task = extract_swarm_task(user_input)
+            if not task:
+                self.query_one(ChatView).post_message(
+                    ChatView.AddSystemMessage(
+                        "Usage: /swarm <Aufgabe>\n"
+                        "Beispiel: /swarm Erstelle eine REST API für ein Buchungssystem",
+                        style="system-msg",
+                    )
+                )
+                return
+            self.query_one(ChatView).post_message(ChatView.AddUserMessage(user_input))
+            self._run_swarm(task)
+            return
+
+        # Normal chat: resolve slash commands before sending
         resolved = resolve_command(user_input)
 
         # Add user message to session
         self._session.append(Message(role="user", content=resolved))
 
-        # Show original input in UI (not the resolved prompt – avoids noise)
+        # Show original input in UI
         chat = self.query_one(ChatView)
         chat.post_message(ChatView.AddUserMessage(user_input))
 
@@ -309,7 +326,89 @@ class ClawDashApp(App):
         await asyncio.sleep(delay)
         callback()
 
+    # ── Swarm Worker ──────────────────────────────────────────────────────────
+
+    @work(exclusive=True, thread=False)
+    async def _run_swarm(self, task: str) -> None:
+        """
+        Multi-agent swarm pipeline:
+          Planer → N Spezialisten (parallel) → Synthesizer → ChatView
+
+        The exclusive=True means only one AI job (chat OR swarm) runs at a time.
+        """
+        chat = self.query_one(ChatView)
+        status = self.query_one(StatusBar)
+        hist_input = self.query_one(HistoryInput)
+
+        hist_input.disable()
+        status.post_message(StatusBar.SetStreaming(True))
+        chat.post_message(ChatView.BeginAssistantMessage())
+
+        accumulated = ""
+
+        def on_progress(text: str) -> None:
+            nonlocal accumulated
+            accumulated += text + "\n"
+            # Stream progress into the live assistant area
+            chat.post_message(ChatView.AppendChunk(text + "\n"))
+
+        try:
+            result = await run_swarm(
+                task=task,
+                model=self.model,
+                on_progress=on_progress,
+            )
+
+            # Show final synthesis as the main response
+            final_text = (
+                "\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "🌲 Swarm-Ergebnis\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                + result.final
+            )
+            chat.post_message(ChatView.AppendChunk(final_text))
+
+            # Persist to session
+            self._session.append(Message(role="user", content=f"/swarm {task}"))
+            self._session.append(
+                Message(role="assistant", content=accumulated + final_text)
+            )
+            save_session(self._session)
+
+        except OllamaNotReachableError:
+            status.post_message(StatusBar.SetError("Ollama nicht erreichbar"))
+            chat.post_message(
+                ChatView.AddSystemMessage(
+                    "⚠  Swarm abgebrochen: Ollama nicht erreichbar.",
+                    style="error-msg",
+                )
+            )
+        except OllamaModelNotFoundError as exc:
+            status.post_message(StatusBar.SetError(f"Modell fehlt: {exc.model}"))
+            chat.post_message(
+                ChatView.AddSystemMessage(
+                    f"⚠  Modell '{exc.model}' nicht vorhanden.\n"
+                    f"   ollama pull {exc.model}",
+                    style="error-msg",
+                )
+            )
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            status.post_message(StatusBar.SetError(f"Swarm-Fehler: {exc}"))
+            chat.post_message(
+                ChatView.AddSystemMessage(
+                    f"⚠  Swarm-Fehler: {exc}",
+                    style="error-msg",
+                )
+            )
+        finally:
+            chat.post_message(ChatView.FinalizeAssistantMessage())
+            status.post_message(StatusBar.SetStreaming(False))
+            hist_input.enable()
+
     # ── Actions ───────────────────────────────────────────────────────────────
+
 
     def action_reset_session(self) -> None:
         """Ctrl+R – delete session and clear display."""

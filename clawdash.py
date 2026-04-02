@@ -14,29 +14,30 @@ import sys
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="clawdash",
-        description="🌲 ClawDash – BlackForest Edition | keyboard-first TUI for local LLMs",
+        description=(
+            "🌲 ClawDash – BlackForest Edition\n"
+            "   Keyboard-first TUI for local LLMs via Ollama.\n"
+            "   MiMi Tech AI UG · Bad Liebenzell, Schwarzwald\n\n"
+            "Slash commands:  /post  /debug  /idea  /explain  /commit\n"
+            "Swarm agents:    /swarm <Aufgabe>  (multi-agent parallel pipeline)\n"
+            "Keyboard:        Ctrl+R=Reset  Ctrl+L=Clear  ↑↓=History  q=Quit"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
             "  clawdash\n"
-            "  clawdash --model mistral\n"
+            "  clawdash --model llama3.1\n"
+            "  clawdash --model qwen2.5-coder:7b\n"
             "  clawdash --reset\n\n"
-            "Keyboard:\n"
-            "  Enter     send message\n"
-            "  ↑ / ↓    input history\n"
-            "  /         command mode (try /post, /debug, /idea)\n"
-            "  Ctrl+R    reset session\n"
-            "  Ctrl+L    clear display\n"
-            "  q         quit\n\n"
-            "No cloud. No tracking. Straight from the Black Forest.\n"
-            "MiMi Tech AI UG – Bad Liebenzell"
+            "No cloud. No tracking. Straight from the Black Forest. 🌲"
         ),
     )
     parser.add_argument(
         "--model",
-        default="llama3.2",
+        default="phi4-mini",
         metavar="MODEL",
-        help="Ollama model name (default: llama3.2)",
+        help="Ollama model name (default: phi4-mini). "
+             "Run 'ollama list' to see available models.",
     )
     parser.add_argument(
         "--reset",
@@ -46,7 +47,7 @@ def main() -> None:
     parser.add_argument(
         "--version",
         action="version",
-        version="ClawDash 3.0.0 – BlackForest Edition",
+        version="ClawDash 3.0.0 – BlackForest Edition (MiMi Tech AI UG)",
     )
 
     args = parser.parse_args()
@@ -55,7 +56,7 @@ def main() -> None:
         from ui.app import ClawDashApp
     except ImportError as e:
         print(f"[Error] Failed to import ClawDash: {e}", file=sys.stderr)
-        print("Run: pip install textual ollama", file=sys.stderr)
+        print("Run: pip install -e '.[dev]'  or  ./install.sh", file=sys.stderr)
         sys.exit(1)
 
     app = ClawDashApp(model=args.model, reset=args.reset)
