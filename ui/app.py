@@ -22,8 +22,10 @@ from core.chat import (
     OllamaModelNotFoundError,
     OllamaNotReachableError,
     check_ollama_connection,
+    chat_with_tools,
     send_message_safe,
 )
+from core.tools import ShellConfirmationRequired, execute_confirmed_shell
 from core.swarm import run_swarm
 from core.commands import extract_swarm_task, is_swarm_command, resolve_command
 from core.session import (
@@ -242,17 +244,41 @@ class ClawDashApp(App):
             )
 
         try:
-            # Wrap in loading-hint task: if first token takes > 15s, show hint
+            # Hint-Task: zeigt "Laden…" wenn Modell >15s braucht
             hint_task = asyncio.create_task(
                 self._loading_hint_after_delay(on_loading_hint, delay=15.0)
             )
 
+            # ── Tool-Call Callbacks ─────────────────────────────────────────
+            def on_tool_start(tool_name: str, args: dict) -> None:
+                """Zeigt Spinner-Meldung wenn Tool startet."""
+                args_preview = ", ".join(
+                    f"{k}={str(v)[:40]!r}" for k, v in args.items()
+                )
+                chat.post_message(
+                    ChatView.AddSystemMessage(
+                        f"🔍 {tool_name}({args_preview})…",
+                        style="tool-call",
+                    )
+                )
+
+            def on_tool_done(tool_name: str, result: str) -> None:
+                """Zeigt Häkchen wenn Tool fertig."""
+                preview = result[:80].replace("\n", " ")
+                chat.post_message(
+                    ChatView.AddSystemMessage(
+                        f"✅ {tool_name} → {preview}…" if len(result) > 80 else f"✅ {tool_name} → {result}",
+                        style="tool-done",
+                    )
+                )
+
             try:
-                full_response = await send_message_safe(
+                full_response = await chat_with_tools(
                     model=self.model,
                     history=self._session,
                     on_chunk=on_chunk,
-                    on_fallback=on_fallback,
+                    on_tool_start=on_tool_start,
+                    on_tool_done=on_tool_done,
                     on_loading_hint=on_loading_hint,
                 )
             finally:
@@ -261,6 +287,17 @@ class ClawDashApp(App):
                     await hint_task
                 except asyncio.CancelledError:
                     pass
+
+        except ShellConfirmationRequired as exc:
+            # ── Shell-Bestätigung (TUI Inline-Confirm) ──────────────────────
+            chat.post_message(
+                ChatView.AddSystemMessage(
+                    f"🖥  Shell-Befehl vorgeschlagen:\n"
+                    f"   {exc.command}\n\n"
+                    f"   Führe ihn manuell aus oder kopiere ihn.",
+                    style="tool-call",
+                )
+            )
 
         except OllamaNotReachableError:
             status.post_message(
