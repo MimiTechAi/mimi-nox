@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![Ollama](https://img.shields.io/badge/Powered%20by-Ollama-black?style=flat-square)](https://ollama.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-25%20modules-22c55e?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-248%20passed-22c55e?style=flat-square)](#testing)
 
 *Built in Bad Liebenzell, Schwarzwald · No cloud · No telemetry · 100% yours*
 
@@ -42,16 +42,24 @@ MiMi Nox ist ein **vollständig lokaler, autonomer AI-Agent** – kein Abonnemen
 | **User-Profil** | Lernende Persona – Name, Expertise, Sprache, Stil |
 | **Fehler-Journal** | Sammelt Korrekturen, verhindert Wiederholung |
 
-### 🛠 Autonome Werkzeuge
-| Tool | Was es tut |
-|---|---|
-| `web_search` | DuckDuckGo-Suche + Context-Extraktion |
-| `browser_go` | **Headless Playwright** – echter Browser mit Cookie-Handling |
-| `shell_exec` | Shell-Befehle mit Sandbox-Bestätigung |
-| `file_search` | Ripgrep-basierte Dateisuche |
-| `vision_click` | Bildschirm-Screenshot → KI-Koordinaten → Maus-Klick (PyAutoGUI) |
-| `vision_type` | Text tippen über GUI-Steuerung |
-| `datetime_now` | Aktuelle Uhrzeit und Datum |
+### 🛠 Autonome Werkzeuge (15 Tools – alle verifiziert ✅)
+| Tool | Was es tut | Status |
+|---|---|---|
+| `web_search` | DuckDuckGo-Suche | ✅ |
+| `browser_go` | **Headless Playwright** – echter Browser | ✅ |
+| `browser_screenshot` | Browser-Screenshot für KI-Analyse | ✅ |
+| `browser_click` | Vision-basierter Klick im Browser | ✅ |
+| `browser_type` / `browser_press` | Text tippen / Taste drücken | ✅ |
+| `run_shell` | Shell-Befehle (immer mit User-Bestätigung) | ✅ |
+| `file_search` | Spotlight (macOS) / find (Linux) | ✅ |
+| `read_file` | Datei lesen (Whitelist-geschützt) | ✅ |
+| `list_directory` | Ordnerinhalt auflisten | ✅ |
+| `load_workspace` | Ganzes Verzeichnis laden (128K Context) | ✅ |
+| `analyze_image` | Bild per Gemma4 Vision analysieren | ✅ |
+| `take_screenshot` | Desktop-Screenshot (macOS) | ✅ macOS |
+| `vision_click` | KI-gesteuerte Maus-Klicks auf dem Desktop | ✅ macOS |
+| `vision_type` | Text tippen über GUI-Steuerung | ✅ macOS |
+| `get_datetime` | Aktuelle Uhrzeit und Datum | ✅ |
 
 ### 🌐 Browser Interface (Hauptinterface)
 | Feature | Details |
@@ -63,7 +71,7 @@ MiMi Nox ist ein **vollständig lokaler, autonomer AI-Agent** – kein Abonnemen
 | **Skills Tab** | Eigene Skills erstellen, bearbeiten, löschen |
 | **Voice / Walkie-Talkie** | Whisper-Transkription + nativer TTS |
 | **PWA** | Installierbar als App, funktioniert offline |
-| **Mobile Zen-Modus** | Schlankes Mobile-UI via QR-Code-Pairing |
+| **Mobile Chat** | Eigene `mobile.html` – WhatsApp-Style via QR-Code |
 | **Hintergrund-Jobs** | APScheduler – zeitgesteuerte Tasks via `/api/schedule` |
 
 ### 📱 PWA & Mobile
@@ -367,7 +375,7 @@ mimi-nox/
 ├── core/                      Reines Async-Python – kein UI
 │   ├── chat.py                Ollama AsyncClient + Streaming
 │   ├── react.py               ReAct-Loop + Reflexion
-│   ├── tools.py               Tool-Engine (7 Tools)
+│   ├── tools.py               Tool-Engine (15 Tools)
 │   ├── artifact_detector.py   Code-Block-Erkennung für Artifacts
 │   ├── browser.py             Playwright Headless Browser
 │   ├── vision.py              PyAutoGUI + Screenshot-Analyse
@@ -399,16 +407,17 @@ mimi-nox/
 │       └── health.py          GET /health
 │
 ├── app/src/                   Web-Frontend (kein Framework)
-│   ├── index.html             App-Shell + PWA-Meta
+│   ├── index.html             Desktop App-Shell + PWA-Meta
+│   ├── mobile.html            📱 WhatsApp-Style Chat (eigenständig)
 │   ├── main.js                NoxApp Controller (ES-Modul)
 │   ├── artifact.js            ArtifactStore + ArtifactPanel
 │   ├── style.css              Schwarzwald-Edition Design-System
 │   ├── manifest.json          PWA-Manifest
-│   └── service-worker.js      Cache-First SW (v5)
+│   └── service-worker.js      Cache-First SW (v6)
 │
-├── skills/                    Eingebaute Skill-Definitionen
+├── skills/                    8 eingebaute Skill-Definitionen
 ├── ui/                        TUI (Textual) – Alternative
-└── tests/                     25 Test-Module (pytest)
+└── tests/                     248 Tests + 32 GWT-Validierungen
 ```
 
 ---
@@ -439,14 +448,24 @@ playwright install chromium
 
 ## Testing
 
-**25 Test-Module** mit pytest. Strategie: TDD mit BDD-Notation (Given-When-Then).
+**248 Unit-Tests + 32 Live-Validierungen.** Strategie: TDD mit BDD-Notation (Given-When-Then).
+
+```bash
+# Unit-Tests (schnell, alle gemockt)
+pytest tests/ -v
+# → 248 passed ✅
+
+# Live-Validierung (gegen laufenden Server + Ollama)
+python tests/validate_all_capabilities.py
+# → 32/32 bestanden ✅ (Core, Tools, API einzeln geprüft)
+```
 
 | Modul | Testet |
 |---|---|
 | `test_artifact_detector.py` | Artifact-Erkennung (11 Tests, BDD) |
 | `test_api.py` | Alle REST-Endpunkte |
 | `test_chat.py` | Ollama-Streaming + Fehlerbehandlung |
-| `test_tools.py` | Tool-Engine, alle 7 Tools |
+| `test_tools.py` | Tool-Engine, alle 15 Tools |
 | `test_react.py` | ReAct-Loop + Reflexionslogik |
 | `test_skills.py` | Skill-Loader, CRUD, Trigger |
 | `test_skill_builder.py` | Auto-Skill-Generierung |
@@ -454,7 +473,9 @@ playwright install chromium
 | `test_vision.py` | Screenshot + Koordinaten-Erkennung |
 | `test_swarm.py` | Multi-Agent-Parallel-Pipeline |
 | `test_audio.py` | Whisper-Transkription + TTS |
-| ... | + 14 weitere |
+| `test_mobile.py` | QR-Code + Mobile-Pairing |
+| `validate_all_capabilities.py` | **32 GWT-Tests live gegen Server** |
+| ... | + 12 weitere |
 
 ---
 
@@ -467,6 +488,19 @@ playwright install chromium
 | **RAM** | 8 GB | 16 GB+ |
 | **Storage** | 5 GB (Modell + Deps) | 20 GB+ |
 | **GPU** | – | M1/M2/M3 oder NVIDIA |
+
+### Plattform-Hinweise
+
+| Feature | macOS | Linux | Windows |
+|---|---|---|---|
+| Chat, Skills, Memory, Tools | ✅ | ✅ | ✅ |
+| Headless Browser | ✅ | ✅ | ✅ |
+| Vision Click/Type | ✅ | ⚠️ eingeschränkt | ❌ |
+| Desktop-Screenshot | ✅ | ⚠️ | ❌ |
+| PWA + QR-Pairing | ✅ | ✅ | ✅ |
+| TTS (Edge-TTS) | ✅ (Internet) | ✅ (Internet) | ✅ (Internet) |
+
+> **Hinweis:** MiMi Nox wurde primär für **macOS** entwickelt. Desktop-Automatisierung (vision_click, vision_type, take_screenshot) erfordert macOS-Berechtigungen: *Systemeinstellungen → Datenschutz → Bedienungshilfen + Bildschirmaufnahme*.
 
 ---
 
