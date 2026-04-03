@@ -1,25 +1,25 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#020504" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <meta name="description" content="◑ MiMi Nox – Lokale KI. Privat. Lokal. Deins." />
+  <meta name="description" data-i18n="meta.description" content="◑ MiMi Nox – Local AI. Private. Local. Yours." />
   <title>◑ MiMi Nox</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Markdown Renderer + XSS-Schutz (lokal gebundelt, kein CDN) -->
+  <!-- Markdown Renderer + XSS Protection (locally bundled, no CDN) -->
   <script defer src="lib/marked.min.js"></script>
   <script defer src="lib/purify.min.js"></script>
   <link rel="manifest" href="manifest.json" />
 </head>
 <body>
 
-  <!-- ── Hintergrund-Atmosphäre (Baumsilhouetten + Glow) ── -->
+  <!-- ── Background Atmosphere (Tree Silhouettes + Glow) ── -->
   <div class="forest-bg" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════════════
@@ -29,43 +29,43 @@
 
     <!-- Logo -->
     <div class="logo" aria-label="MiMi Nox Home">
-      <button id="btn-hamburger" class="btn-hamburger" title="Menü öffnen" style="display: none; background: none; border: none; color: var(--green); font-size: 24px; cursor: pointer; padding-right: 8px;">☰</button>
+      <button id="btn-hamburger" class="btn-hamburger" title="Menu" style="display: none; background: none; border: none; color: var(--green); font-size: 24px; cursor: pointer; padding-right: 8px;">☰</button>
       <span class="logo-symbol" aria-hidden="true">◑</span>
       <div class="logo-text">
         <span class="logo-name">MiMi Nox</span>
-        <span class="logo-tagline">Privat · Lokal · Deins.</span>
+        <span class="logo-tagline" data-i18n="meta.tagline">Private · Local · Yours.</span>
       </div>
     </div>
 
     <!-- Navigation Tabs -->
-    <nav class="topnav" role="navigation" aria-label="Hauptnavigation" style="display:flex; align-items:center;">
-      <button class="btn-primary" id="btn-new-chat" title="Startet einen frischen LLM-Kontext" style="font-size: 13px; padding: 4px 10px; margin-right: 12px; height: 28px; line-height: 1;">📝 Neuer Chat</button>
-      <button class="tab active" id="tab-chat"    data-tab="chat"    aria-selected="true">💬 Chat</button>
+    <nav class="topnav" role="navigation" aria-label="Main Navigation" style="display:flex; align-items:center;">
+      <button class="btn-primary" id="btn-new-chat" data-i18n="nav.newChat" title="Start a fresh LLM context" style="font-size: 13px; padding: 4px 10px; margin-right: 12px; height: 28px; line-height: 1;">📝 New Chat</button>
+      <button class="tab active" id="tab-chat"    data-tab="chat"    aria-selected="true"  data-i18n="nav.chat">💬 Chat</button>
       <span class="tab-sep" aria-hidden="true">|</span>
-      <button class="tab"        id="tab-skills"  data-tab="skills"  aria-selected="false">⚡ Skills</button>
+      <button class="tab"        id="tab-skills"  data-tab="skills"  aria-selected="false" data-i18n="nav.skills">⚡ Skills</button>
       <span class="tab-sep" aria-hidden="true">|</span>
-      <button class="tab"        id="tab-history" data-tab="history" aria-selected="false">📚 Verlauf</button>
+      <button class="tab"        id="tab-history" data-tab="history" aria-selected="false" data-i18n="nav.history">📚 History</button>
       <span class="tab-sep" aria-hidden="true">|</span>
-      <button class="tab"        id="tab-memory"  data-tab="memory"  aria-selected="false">🧠 Memory</button>
+      <button class="tab"        id="tab-memory"  data-tab="memory"  aria-selected="false" data-i18n="nav.memory">🧠 Memory</button>
       <span class="tab-sep" aria-hidden="true">|</span>
-      <button class="tab"        id="tab-profile" data-tab="profile" aria-selected="false">👤 Profil</button>
+      <button class="tab"        id="tab-profile" data-tab="profile" aria-selected="false" data-i18n="nav.profile">👤 Profile</button>
     </nav>
 
-    <!-- Rechts: Modell + Status -->
+    <!-- Right: Model + Status -->
     <div class="topbar-right" style="display:flex; align-items:center; gap:16px;">
       
       <!-- Mobile Pairing Button -->
-      <button class="btn-secondary" id="btn-mobile-pairing" title="Mit dem Smartphone verbinden (QR Code)" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: var(--text-dim); border-radius: 4px; cursor: pointer; font-size: 13px; padding: 4px 10px; height: 28px; line-height: 1; transition: all 0.2s;">📱 Smartphone verbinden</button>
+      <button class="btn-secondary" id="btn-mobile-pairing" data-i18n="nav.mobilePairing" data-i18n-title="nav.mobilePairing" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: var(--text-dim); border-radius: 4px; cursor: pointer; font-size: 13px; padding: 4px 10px; height: 28px; line-height: 1; transition: all 0.2s;">📱 Connect Phone</button>
 
-      <!-- Autonomer Modus Toggle -->
-      <label class="autonom-mode-label" title="Autonomer Modus: MiMi NOx darf ohne Nachfrage klicken und tippen." style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text-dim);">
+      <!-- Autonomous Mode Toggle -->
+      <label class="autonom-mode-label" data-i18n-title="nav.autonom" style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="autonom-toggle" autocomplete="off" style="accent-color: var(--orange); cursor:pointer;">
-        <span style="user-select:none;">🤖 Autonom</span>
+        <span style="user-select:none;" data-i18n="nav.autonom">🤖 Autonomous</span>
       </label>
 
       <div class="status-badge" id="status-badge" aria-live="polite">
         <span class="status-dot" id="status-dot"></span>
-        <span class="status-text" id="status-text">Verbinden…</span>
+        <span class="status-text" id="status-text" data-i18n="status.connecting">Connecting…</span>
       </div>
     </div>
   </header>
@@ -74,12 +74,12 @@
        OFFLINE BANNER
   ══════════════════════════════════════════════════════ -->
   <div class="offline-banner hidden" id="offline-banner" role="alert">
-    ⚠ Ollama nicht erreichbar — starte Ollama mit: <code>ollama serve</code>
-    <button class="offline-retry" id="offline-retry" aria-label="Erneut verbinden">↻ Erneut versuchen</button>
+    <span data-i18n="offline.message">⚠ Ollama not reachable — start with:</span> <code>ollama serve</code>
+    <button class="offline-retry" id="offline-retry" data-i18n="offline.retry" aria-label="Retry">↻ Retry</button>
   </div>
 
   <!-- ══════════════════════════════════════════════════════
-       MAIN — Chat + Aktivitäts-Panel
+       MAIN — Chat + Activity Panel
   ══════════════════════════════════════════════════════ -->
   <main class="main" id="main-area">
 
@@ -87,50 +87,50 @@
     <section class="tab-content active" id="view-chat" aria-label="Chat">
 
       <!-- Chat Area (65%) -->
-      <div class="chat-area" id="chat-area" role="log" aria-live="polite" aria-label="Chat-Verlauf">
+      <div class="chat-area" id="chat-area" role="log" aria-live="polite" data-i18n-aria="nav.chat">
 
-        <!-- Willkommens-Screen (wenn leer) -->
+        <!-- Welcome Screen (when empty) -->
         <div class="welcome" id="welcome-screen">
           <div class="welcome-glow" aria-hidden="true">◑</div>
-          <h1 class="welcome-heading">Womit kann ich helfen?</h1>
-          <p class="welcome-sub">Tippe eine Frage oder wähle einen Skill</p>
+          <h1 class="welcome-heading" data-i18n="welcome.heading">How can I help?</h1>
+          <p class="welcome-sub" data-i18n="welcome.sub">Type a question or choose a skill</p>
           <div class="welcome-cards" role="list">
-            <button class="welcome-card" data-prompt="Suche aktuelle KI-News vom heutigen Tag" role="listitem">
+            <button class="welcome-card" data-prompt="Search the latest AI news from today" role="listitem">
               <span class="card-icon">🔍</span>
-              <span>Aktuelle News suchen</span>
+              <span data-i18n="welcome.searchNews">Search latest news</span>
             </button>
-            <button class="welcome-card" data-prompt="/files lies meine Datei auf dem Desktop" role="listitem">
+            <button class="welcome-card" data-prompt="/files read my file on the Desktop" role="listitem">
               <span class="card-icon">📁</span>
-              <span>Datei analysieren</span>
+              <span data-i18n="welcome.analyzeFile">Analyze a file</span>
             </button>
-            <button class="welcome-card" data-prompt="/write Schreibe eine professionelle E-Mail für" role="listitem">
+            <button class="welcome-card" data-prompt="/write Write a professional email for" role="listitem">
               <span class="card-icon">✏️</span>
-              <span>Text schreiben</span>
+              <span data-i18n="welcome.writeText">Write a text</span>
             </button>
           </div>
         </div>
 
-        <!-- Chat-Nachrichten werden hier per JS eingefügt -->
-        <div class="messages" id="messages" aria-label="Nachrichten"></div>
+        <!-- Chat messages inserted by JS -->
+        <div class="messages" id="messages" aria-label="Messages"></div>
       </div>
 
-      <!-- Aktivitäts-Panel (35%) -->
-      <aside class="activity-panel" id="activity-panel" aria-label="KI-Aktivität">
+      <!-- Activity Panel (35%) -->
+      <aside class="activity-panel" id="activity-panel" data-i18n-aria="activity.title">
         <div class="ap-header">
-          <span class="ap-title">⬡ KI-Aktivität</span>
-          <button class="ap-toggle" id="ap-toggle" aria-label="Panel ein-/ausklappen" title="Ein-/ausklappen">◀</button>
+          <span class="ap-title" data-i18n="activity.title">⬡ AI Activity</span>
+          <button class="ap-toggle" id="ap-toggle" aria-label="Toggle panel" title="Toggle">◀</button>
         </div>
 
         <!-- Terminal Feed -->
-        <div class="ap-terminal" id="ap-terminal" aria-live="polite" aria-label="KI-Aktivitäts-Log">
-          <div class="terminal-placeholder">Warte auf Eingabe…</div>
+        <div class="ap-terminal" id="ap-terminal" aria-live="polite" data-i18n-aria="activity.title">
+          <div class="terminal-placeholder" data-i18n="activity.waiting">Waiting for input…</div>
         </div>
 
         <!-- Memory -->
         <div class="ap-memory">
-          <div class="ap-section-title">🧠 Was ich über dich weiß</div>
-          <div class="memory-cards" id="memory-cards" aria-label="Gespeichertes Memory">
-            <div class="memory-placeholder">Noch nichts gespeichert.</div>
+          <div class="ap-section-title" data-i18n="activity.about">🧠 What I know about you</div>
+          <div class="memory-cards" id="memory-cards" aria-label="Saved memory">
+            <div class="memory-placeholder" data-i18n="activity.nothingSaved">Nothing saved yet.</div>
           </div>
         </div>
       </aside>
@@ -141,104 +141,105 @@
       <div class="tab-inner skills-view">
         <div class="skills-header">
           <div>
-            <h2 class="tab-heading">⚡ Skills verwalten</h2>
-            <p class="tab-sub">Aktiviere Built-in Skills oder erstelle deine eigenen Befehle.</p>
+            <h2 class="tab-heading" data-i18n="skills.title">⚡ Manage Skills</h2>
+            <p class="tab-sub" data-i18n="skills.sub">Activate built-in skills or create your own commands.</p>
           </div>
-          <button class="btn-primary" id="new-skill-btn" aria-label="Neuen Skill erstellen">+ Neuer Skill</button>
+          <button class="btn-primary" id="new-skill-btn" data-i18n="skills.newSkill" aria-label="Create new skill">+ New Skill</button>
         </div>
 
-        <!-- Skill-Karten Grid -->
+        <!-- Skill Cards Grid -->
         <div class="skills-grid" id="skills-grid" aria-label="Skills"></div>
 
-        <!-- Formular: Neuen Skill erstellen -->
+        <!-- Form: Create Skill -->
         <div class="skill-form-wrap hidden" id="skill-form-wrap">
-          <h3 class="skill-form-title" id="skill-form-title">Neuen Skill erstellen</h3>
-          <form class="skill-form" id="skill-form" aria-label="Skill-Formular">
+          <h3 class="skill-form-title" id="skill-form-title" data-i18n="skills.createTitle">Create new skill</h3>
+          <form class="skill-form" id="skill-form" aria-label="Skill form">
             <div class="form-row">
               <div class="form-col">
-                <label for="sf-name">Skill-Name</label>
-                <input type="text" id="sf-name" name="name" placeholder="mein-skill" required pattern="[a-z0-9\-]+" />
-                <span class="form-hint">Nur Kleinbuchstaben, Zahlen und Bindestriche</span>
+                <label for="sf-name" data-i18n="skills.name">Skill Name</label>
+                <input type="text" id="sf-name" name="name" placeholder="my-skill" required pattern="[a-z0-9\-]+" />
+                <span class="form-hint" data-i18n="skills.nameHint">Lowercase letters, numbers and hyphens only</span>
               </div>
               <div class="form-col">
-                <label for="sf-trigger">Trigger</label>
-                <input type="text" id="sf-trigger" name="trigger" placeholder="/meinSkill" required />
+                <label for="sf-trigger" data-i18n="skills.trigger">Trigger</label>
+                <input type="text" id="sf-trigger" name="trigger" placeholder="/mySkill" required />
               </div>
             </div>
-            <label for="sf-description">Beschreibung</label>
-            <input type="text" id="sf-description" name="description" placeholder="Was macht dieser Skill?" required />
-            <label for="sf-tools">Tools (kommagetrennt)</label>
+            <label for="sf-description" data-i18n="skills.description">Description</label>
+            <input type="text" id="sf-description" name="description" data-i18n-placeholder="skills.descPlaceholder" placeholder="What does this skill do?" required />
+            <label for="sf-tools" data-i18n="skills.tools">Tools (comma-separated)</label>
             <input type="text" id="sf-tools" name="tools" placeholder="web_search, memory" />
-            <label for="sf-prompt">Verhalten der KI (System Prompt)</label>
+            <label for="sf-prompt" data-i18n="skills.prompt">AI behavior (System Prompt)</label>
             <textarea id="sf-prompt" name="system_prompt" rows="6"
-              placeholder="Du bist ein spezialisierter Assistent für…&#10;Regeln:&#10;- Immer präzise antworten&#10;- Nutze das Tool web_search für aktuelle Infos"
+              data-i18n-placeholder="skills.promptPlaceholder"
+              placeholder="You are a specialized assistant for…"
               required></textarea>
             <div class="skill-form-actions">
-              <button type="submit" class="btn-primary" id="skill-save-btn">💾 Speichern</button>
-              <button type="button" class="btn-secondary" id="skill-cancel-btn">Abbrechen</button>
-              <span class="save-confirm hidden" id="skill-save-confirm" aria-live="polite">✅ Gespeichert!</span>
+              <button type="submit" class="btn-primary" id="skill-save-btn" data-i18n="skills.save">💾 Save</button>
+              <button type="button" class="btn-secondary" id="skill-cancel-btn" data-i18n="skills.cancel">Cancel</button>
+              <span class="save-confirm hidden" id="skill-save-confirm" data-i18n="skills.saved" aria-live="polite">✅ Saved!</span>
             </div>
           </form>
         </div>
       </div>
     </section>
 
-    <!-- ── VERLAUF TAB ────────────────────────────── -->
-    <section class="tab-content" id="view-history" aria-label="Verlauf" hidden>
+    <!-- ── HISTORY TAB ────────────────────────────── -->
+    <section class="tab-content" id="view-history" aria-label="History" hidden>
       <div class="tab-inner">
-        <h2 class="tab-heading">📚 Gespeicherte Unterhaltungen</h2>
-        <p class="tab-sub">Deine Unterhaltungen bleiben nur lokal auf deinem Gerät.</p>
-        <div id="history-list" class="history-list" aria-label="Verlaufsliste"></div>
-        <button class="btn-danger" id="clear-history" aria-label="Verlauf löschen">🗑 Verlauf löschen</button>
+        <h2 class="tab-heading" data-i18n="history.title">📚 Saved Conversations</h2>
+        <p class="tab-sub" data-i18n="history.sub">Your conversations stay local on your device only.</p>
+        <div id="history-list" class="history-list" aria-label="History list"></div>
+        <button class="btn-danger" id="clear-history" data-i18n="history.clear" aria-label="Clear history">🗑 Clear History</button>
       </div>
     </section>
 
     <!-- ── MEMORY TAB ─────────────────────────────── -->
     <section class="tab-content" id="view-memory" aria-label="Memory" hidden>
       <div class="tab-inner">
-        <h2 class="tab-heading">🧠 Langzeit-Memory</h2>
-        <p class="tab-sub">Die KI erinnert sich über mehrere Sessions an wichtige Informationen.</p>
+        <h2 class="tab-heading" data-i18n="memory.title">🧠 Long-Term Memory</h2>
+        <p class="tab-sub" data-i18n="memory.sub">The AI remembers important information across multiple sessions.</p>
         <div class="memory-search-bar">
-          <input type="search" id="memory-search-input" placeholder="Memory durchsuchen…" aria-label="Memory durchsuchen" />
-          <button id="memory-search-btn" aria-label="Suchen">🔍</button>
+          <input type="search" id="memory-search-input" data-i18n-placeholder="memory.searchPlaceholder" placeholder="Search memory…" aria-label="Search memory" />
+          <button id="memory-search-btn" aria-label="Search">🔍</button>
         </div>
-        <div id="memory-full-list" class="memory-full-list" aria-label="Alle Memory-Einträge"></div>
+        <div id="memory-full-list" class="memory-full-list" aria-label="All memory entries"></div>
       </div>
     </section>
 
-    <!-- ── PROFIL TAB ─────────────────────────────── -->
-    <section class="tab-content" id="view-profile" aria-label="Profil" hidden>
+    <!-- ── PROFILE TAB ─────────────────────────────── -->
+    <section class="tab-content" id="view-profile" aria-label="Profile" hidden>
       <div class="tab-inner">
-        <h2 class="tab-heading">👤 Dein Profil</h2>
-        <p class="tab-sub">Hilft der KI, bessere und persönlichere Antworten zu geben.</p>
-        <form class="profile-form" id="profile-form" aria-label="Profil-Formular">
-          <label for="pf-name">Name <span class="optional">(optional)</span></label>
-          <input type="text" id="pf-name" name="name" placeholder="Wie heißt du?" autocomplete="name" />
+        <h2 class="tab-heading" data-i18n="profile.title">👤 Your Profile</h2>
+        <p class="tab-sub" data-i18n="profile.sub">Helps the AI give better, more personalized answers.</p>
+        <form class="profile-form" id="profile-form" aria-label="Profile form">
+          <label for="pf-name"><span data-i18n="profile.name">Name</span> <span class="optional" data-i18n="profile.nameOptional">(optional)</span></label>
+          <input type="text" id="pf-name" name="name" data-i18n-placeholder="profile.namePlaceholder" placeholder="What's your name?" autocomplete="name" />
 
-          <label for="pf-expertise">Expertise</label>
-          <input type="text" id="pf-expertise" name="expertise" placeholder="z.B. Python-Entwickler, Marketing, Arzt…" />
+          <label for="pf-expertise" data-i18n="profile.expertise">Expertise</label>
+          <input type="text" id="pf-expertise" name="expertise" data-i18n-placeholder="profile.expertisePlaceholder" placeholder="e.g. Python developer, Marketing, Doctor…" />
 
-          <label for="pf-language">Bevorzugte Sprache</label>
+          <label for="pf-language" data-i18n="profile.language">Preferred Language</label>
           <select id="pf-language" name="preferred_language">
             <option value="de">Deutsch</option>
-            <option value="en">Englisch</option>
+            <option value="en">English</option>
           </select>
 
-          <label for="pf-style">Antwort-Stil</label>
+          <label for="pf-style" data-i18n="profile.style">Response Style</label>
           <select id="pf-style" name="response_style">
-            <option value="ausführlich">Ausführlich</option>
-            <option value="kurz">Kurz &amp; knapp</option>
-            <option value="technisch">Technisch</option>
-            <option value="einfach">Einfach erklärt</option>
+            <option value="detailed" data-i18n="profile.styleDetailed">Detailed</option>
+            <option value="short" data-i18n="profile.styleShort">Short &amp; concise</option>
+            <option value="technical" data-i18n="profile.styleTechnical">Technical</option>
+            <option value="simple" data-i18n="profile.styleSimple">Simply explained</option>
           </select>
 
-          <label for="pf-voice">🗣️ Bevorzugte Stimme (Text-to-Speech)</label>
+          <label for="pf-voice" data-i18n="profile.voice">🗣️ Preferred Voice (Text-to-Speech)</label>
           <select id="pf-voice" name="voice_uri">
-            <option value="default">System-Standard Stimme</option>
+            <option value="default" data-i18n="profile.voiceDefault">System Default Voice</option>
           </select>
 
-          <button type="submit" class="btn-primary" id="save-profile">💾 Speichern</button>
-          <span class="save-confirm hidden" id="save-confirm" aria-live="polite">✅ Gespeichert!</span>
+          <button type="submit" class="btn-primary" id="save-profile" data-i18n="profile.save">💾 Save</button>
+          <span class="save-confirm hidden" id="save-confirm" data-i18n="profile.saved" aria-live="polite">✅ Saved!</span>
         </form>
       </div>
     </section>
@@ -251,45 +252,45 @@
   <div class="modal-overlay hidden" id="onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="ob-title">
     <div class="modal-box onboarding-box">
       <div class="ob-logo">◑</div>
-      <h2 class="ob-title" id="ob-title">Willkommen bei MiMi Nox</h2>
-      <p class="ob-sub">Wähle, wofür du mich hauptsächlich nutzen möchtest.<br>Ich aktiviere die passenden Skills automatisch.</p>
+      <h2 class="ob-title" id="ob-title" data-i18n="onboarding.title">Welcome to MiMi Nox</h2>
+      <p class="ob-sub"><span data-i18n="onboarding.sub">Choose what you'll mainly use me for.</span><br><span data-i18n="onboarding.subLine2">I'll activate the right skills automatically.</span></p>
 
       <div class="ob-categories" id="ob-categories" role="list">
         <button class="ob-cat" data-cat="dev" role="listitem">
           <span class="ob-cat-icon">💻</span>
-          <span class="ob-cat-name">Entwickler</span>
-          <span class="ob-cat-desc">Code reviewen, Shell-Befehle, Debugging</span>
+          <span class="ob-cat-name" data-i18n="onboarding.dev">Developer</span>
+          <span class="ob-cat-desc" data-i18n="onboarding.devDesc">Code review, shell commands, debugging</span>
         </button>
         <button class="ob-cat" data-cat="research" role="listitem">
           <span class="ob-cat-icon">🔍</span>
-          <span class="ob-cat-name">Forscher</span>
-          <span class="ob-cat-desc">Web-Recherche, Faktencheck, Quellen</span>
+          <span class="ob-cat-name" data-i18n="onboarding.research">Researcher</span>
+          <span class="ob-cat-desc" data-i18n="onboarding.researchDesc">Web research, fact-checking, sources</span>
         </button>
         <button class="ob-cat" data-cat="writer" role="listitem">
           <span class="ob-cat-icon">✍️</span>
-          <span class="ob-cat-name">Schreiber</span>
-          <span class="ob-cat-desc">Texte, E-Mails, Briefe, Zusammenfassungen</span>
+          <span class="ob-cat-name" data-i18n="onboarding.writer">Writer</span>
+          <span class="ob-cat-desc" data-i18n="onboarding.writerDesc">Texts, emails, letters, summaries</span>
         </button>
         <button class="ob-cat" data-cat="analyst" role="listitem">
           <span class="ob-cat-icon">📊</span>
-          <span class="ob-cat-name">Analyst</span>
-          <span class="ob-cat-desc">Daten auswerten, Berichte, CSV lesen</span>
+          <span class="ob-cat-name" data-i18n="onboarding.analyst">Analyst</span>
+          <span class="ob-cat-desc" data-i18n="onboarding.analystDesc">Analyze data, reports, read CSVs</span>
         </button>
         <button class="ob-cat" data-cat="medic" role="listitem">
           <span class="ob-cat-icon">⚕️</span>
-          <span class="ob-cat-name">Medizin / Pflege</span>
-          <span class="ob-cat-desc">Informationen recherchieren, Dokumentation</span>
+          <span class="ob-cat-name" data-i18n="onboarding.medic">Medical / Care</span>
+          <span class="ob-cat-desc" data-i18n="onboarding.medicDesc">Research information, documentation</span>
         </button>
         <button class="ob-cat" data-cat="allround" role="listitem">
           <span class="ob-cat-icon">🌟</span>
-          <span class="ob-cat-name">Allgemein</span>
-          <span class="ob-cat-desc">Alle Skills aktivieren</span>
+          <span class="ob-cat-name" data-i18n="onboarding.allround">General</span>
+          <span class="ob-cat-desc" data-i18n="onboarding.allroundDesc">Activate all skills</span>
         </button>
       </div>
 
       <div class="ob-footer">
-        <span class="ob-hint">Du kannst Skills jederzeit unter ⚡ Skills anpassen.</span>
-        <button class="btn-primary" id="ob-start-btn" disabled>Starten →</button>
+        <span class="ob-hint" data-i18n="onboarding.hint">You can adjust skills anytime under ⚡ Skills.</span>
+        <button class="btn-primary" id="ob-start-btn" data-i18n="onboarding.start" disabled>Start →</button>
       </div>
     </div>
   </div>
@@ -299,19 +300,19 @@
   ══════════════════════════════════════════════════════ -->
   <div class="modal-overlay hidden" id="mobile-qr-overlay" role="dialog" aria-modal="true" aria-labelledby="mobile-qr-title">
     <div class="modal-box onboarding-box" style="text-align: center;">
-      <h2 class="ob-title" id="mobile-qr-title">📱 Mobile Pairing</h2>
-      <p class="ob-sub">Scanne mich, um MiMi auf dein Handy zu holen (weltweit erreichbar).</p>
+      <h2 class="ob-title" id="mobile-qr-title" data-i18n="mobile.title">📱 Mobile Pairing</h2>
+      <p class="ob-sub" data-i18n="mobile.sub">Scan to get MiMi on your phone (reachable worldwide).</p>
       
       <!-- Loading Spinner -->
       <div id="mobile-qr-loader" style="margin: 40px auto; display: flex; flex-direction: column; align-items: center; gap: 12px;">
          <div class="terminal-spinner" style="font-size: 32px; color: var(--green);">◑</div>
-         <div style="font-size: 13px; color: var(--green-light);">Globaler Tunnel wird aufgebaut...</div>
-         <div style="font-size: 11px; color: var(--text-dim); margin-top: -6px;">Dies kann bis zu 3 Sekunden dauern.</div>
+         <div style="font-size: 13px; color: var(--green-light);" data-i18n="mobile.loading">Setting up global tunnel...</div>
+         <div style="font-size: 11px; color: var(--text-dim); margin-top: -6px;" data-i18n="mobile.loadingHint">This may take up to 3 seconds.</div>
       </div>
 
       <img id="mobile-qr-img" class="hidden" src="" alt="QR Code" style="width: 250px; height: 250px; margin: 20px auto; border-radius: 8px; image-rendering: pixelated;" />
       <div class="ob-footer" style="justify-content: center;">
-        <button class="btn-primary" onclick="if(window.noxApp && window.noxApp.mobilePollInterval) clearInterval(window.noxApp.mobilePollInterval); document.getElementById('mobile-qr-overlay').classList.add('hidden')">Schließen</button>
+        <button class="btn-primary" data-i18n="mobile.close" onclick="if(window.noxApp && window.noxApp.mobilePollInterval) clearInterval(window.noxApp.mobilePollInterval); document.getElementById('mobile-qr-overlay').classList.add('hidden')">Close</button>
       </div>
     </div>
   </div>
@@ -324,12 +325,15 @@
   <footer class="bottombar" role="contentinfo">
 
     <!-- Skill Chips -->
-    <div class="skill-chips" id="skill-chips" role="list" aria-label="Skill-Schnellzugriff">
-      <button class="skill-chip" data-trigger="/research" role="listitem" title="Web-Suche starten">🔍 /research</button>
-      <button class="skill-chip" data-trigger="/files"    role="listitem" title="Dateien lesen/suchen">📁 /files</button>
-      <button class="skill-chip" data-trigger="/write"    role="listitem" title="Texte schreiben">✏️ /write</button>
-      <button class="skill-chip" data-trigger="/review"   role="listitem" title="Code reviewen">💻 /review</button>
-      <button class="skill-chip" data-trigger="/shell"    role="listitem" title="Shell-Befehl">›_ /shell</button>
+    <div class="skill-chips" id="skill-chips" role="list" aria-label="Skill shortcuts">
+      <button class="skill-chip" data-trigger="/async" role="listitem" data-i18n-title="chip.research">⚡ /async</button>
+      <button class="skill-chip" data-trigger="/test" role="listitem" data-i18n-title="chip.review">⚡ /test</button>
+      <button class="skill-chip" data-trigger="/review" role="listitem" data-i18n-title="chip.review">💻 /review</button>
+      <button class="skill-chip" data-trigger="/files" role="listitem" data-i18n-title="chip.files">📁 /files</button>
+      <button class="skill-chip" data-trigger="/shell" role="listitem" data-i18n-title="chip.shell">>_ /shell</button>
+      <button class="skill-chip" data-trigger="/scan" role="listitem" data-i18n-title="chip.scan">⚡ /scan</button>
+      <button class="skill-chip" data-trigger="/research" role="listitem" data-i18n-title="chip.research">🔍 /research</button>
+      <button class="skill-chip" data-trigger="/write" role="listitem" data-i18n-title="chip.write">✏️ /write</button>
     </div>
 
     <!-- Input Row -->
@@ -339,40 +343,42 @@
           class="chat-input"
           id="chat-input"
           rows="1"
-          placeholder="Nachricht eingeben… oder / für Skills"
-          aria-label="Deine Nachricht"
+          data-i18n-placeholder="chat.placeholder"
+          placeholder="Type a message… or / for skills"
+          data-i18n-aria="chat.placeholder"
+          aria-label="Your message"
           autocomplete="off"
           autocorrect="off"
           spellcheck="true"
         ></textarea>
 
-        <!-- Bild-Anhang Button (E4B Vision) -->
-        <input type="file" id="img-input" accept="image/*" style="display:none" aria-label="Bild hochladen" />
-        <button class="attach-btn" id="attach-btn" title="📎 Bild anfügen (Gemma4 E4B Vision)" aria-label="Bild anfügen">📎</button>
+        <!-- Image Attach Button (E4B Vision) -->
+        <input type="file" id="img-input" accept="image/*" style="display:none" aria-label="Upload image" />
+        <button class="attach-btn" id="attach-btn" data-i18n-title="chat.attachImage" title="📎 Attach image (Gemma4 E4B Vision)" aria-label="Attach image">📎</button>
 
-        <!-- Mikrofon-Button + Waveform -->
+        <!-- Microphone Button + Waveform -->
         <div class="mic-container" id="mic-container">
           <div class="waveform-bars" id="waveform-bars" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span>
           </div>
-          <button class="mic-btn" id="mic-btn" aria-label="Sprachnachricht aufnehmen" title="🎙️ Spracheingabe (Click to Talk)">🎙️</button>
+          <button class="mic-btn" id="mic-btn" aria-label="Record voice message" title="🎙️ Voice input (Click to Talk)">🎙️</button>
         </div>
 
-        <button class="send-btn" id="send-btn" aria-label="Nachricht senden" title="Senden (Enter)">➤</button>
+        <button class="send-btn" id="send-btn" data-i18n-aria="chat.send" aria-label="Send message" data-i18n-title="chat.send" title="Send (Enter)">➤</button>
       </div>
 
-      <!-- Bild-Vorschau (erscheint wenn Bild ausgewählt) -->
+      <!-- Image Preview (appears when image selected) -->
       <div id="img-preview-bar" style="display:none; align-items:center; gap:8px; padding:6px 14px; background:rgba(34,197,94,0.06); border-top:1px solid rgba(34,197,94,0.1); font-size:12px; color:var(--green-light)">
         <span>📎</span>
         <span id="img-preview-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-        <img id="img-preview-thumb" src="" alt="Vorschau" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid rgba(34,197,94,0.2)" />
-        <button id="img-remove-btn" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px 6px;" title="Bild entfernen">✕</button>
+        <img id="img-preview-thumb" src="" alt="Preview" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid rgba(34,197,94,0.2)" />
+        <button id="img-remove-btn" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px 6px;" data-i18n-title="chat.removeImage" title="Remove image">✕</button>
       </div>
     </div>
 
     <!-- Keyboard Hint -->
-    <div class="input-hint" aria-hidden="true">
-      ↑ Letzter Befehl · / Skills · Enter Senden · Esc Abbruch
+    <div class="input-hint" aria-hidden="true" data-i18n="hint.full">
+      ↑ Last command · / Skills · Enter Send · Esc Cancel
     </div>
 
   </footer>

@@ -15,6 +15,7 @@ const STORE_KEY_HISTORY = 'mimi_nox_history';
 const DEFAULT_MODEL     = 'gemma4:e4b';
 
 import { ArtifactStore, ArtifactPanel } from './artifact.js';
+import { t, applyTranslations, setLanguage, currentLang } from './i18n.js';
 
 /* ── ◑ NoxApp ────────────────────────────────────────────── */
 class NoxApp {
@@ -52,7 +53,8 @@ class NoxApp {
     window.noxApp = this;
     this._queryElements();
     this._bindEvents();
-    // Modell ist fest konfiguriert (gemma4:e4b)
+    applyTranslations(); // i18n: translate all data-i18n elements
+    // Model is hardcoded (gemma4:e4b)
     this.checkHealth();
     this.loadSkillChips();
 
@@ -298,9 +300,9 @@ class NoxApp {
       if (e.key === 'Enter') this.searchMemoryFull();
     });
 
-    // Verlauf löschen
-    this.el.clearHistory.addEventListener('click', () => {
-      if (confirm('Verlauf wirklich löschen?')) {
+    // Clear history
+    this.el.clearHistory?.addEventListener('click', () => {
+      if (confirm(t('history.confirmClear'))) {
         localStorage.removeItem(STORE_KEY_HISTORY);
         this._renderHistoryList();
       }
@@ -425,7 +427,7 @@ class NoxApp {
   _resetSpeakBtn(btnId) {
     const btn = document.getElementById(btnId);
     if (btn) {
-      btn.innerHTML = '🔊 Vorlesen';
+      btn.innerHTML = `🔊 ${t('chat.readAloud')}`;
       btn.classList.remove('btn-speaking');
     }
   }
@@ -481,7 +483,7 @@ class NoxApp {
     if (state === 'connected') {
       dot.className  = 'status-dot';
       text.className = 'status-text';
-      text.textContent = 'Verbunden';
+      text.textContent = t('status.connected');
     } else {
       dot.className  = 'status-dot offline';
       text.className = 'status-text offline';
@@ -722,7 +724,7 @@ class NoxApp {
 
     // Activity: Anfrage gestartet
     this._addActivity('cmd', `react_loop("${text.slice(0,40)}${text.length>40?'…':''}")`);
-    this._addActivity('progress', 'Antwort generieren…');
+    this._addActivity('progress', t('chat.generating'));
 
     try {
       this._abortController = new AbortController();
@@ -778,7 +780,7 @@ class NoxApp {
                 thinkingBubble.classList.remove('hidden');
                 thinkingBubble.classList.add('pulsing');
                 thinkingBubble.querySelector('.thinking-text').textContent = '';
-                this._addActivity('info', '🧠 Nox denkt nach…');
+                this._addActivity('info', t('chat.thinking'));
               }
               this._scrollToBottom();
               break;
@@ -1069,7 +1071,7 @@ class NoxApp {
     const thinkDiv = document.createElement('div');
     thinkDiv.className = 'bubble-thinking hidden';
     thinkDiv.innerHTML = `
-      <div class="thinking-header">🧠 <span>Nox denkt nach…</span></div>
+      <div class="thinking-header">🧠 <span>${t('chat.thinking')}</span></div>
       <div class="thinking-text"></div>
     `;
     thinkDiv.querySelector('.thinking-header').addEventListener('click', () => {
@@ -1104,15 +1106,15 @@ class NoxApp {
     const actions = document.createElement('div');
     actions.className = 'bubble-actions';
     actions.innerHTML = `
-      <button class="bubble-action-btn" id="speak-${id}" aria-label="Antwort vorlesen">🔊 Vorlesen</button>
+      <button class="bubble-action-btn" id="speak-${id}" aria-label="${t('chat.readAloud')}">🔊 ${t('chat.readAloud')}</button>
       <span class="action-sep">·</span>
-      <button class="bubble-action-btn" id="copy-${id}" aria-label="Antwort kopieren">📋 Kopieren</button>
+      <button class="bubble-action-btn" id="copy-${id}" aria-label="${t('chat.copy')}">📋 ${t('chat.copy')}</button>
       <span class="action-sep">·</span>
       <button class="bubble-action-btn" id="up-${id}"   aria-label="Hilfreiche Antwort">👍</button>
       <span class="action-sep">·</span>
       <button class="bubble-action-btn" id="down-${id}" aria-label="Nicht hilfreiche Antwort">👎</button>
       <span class="action-sep">·</span>
-      <button class="bubble-action-btn" id="deep-${id}" aria-label="Vertiefen">↩ Vertiefen</button>
+      <button class="bubble-action-btn" id="deep-${id}" aria-label="${t('chat.deepen')}">↩ ${t('chat.deepen')}</button>
     `;
 
     wrap.appendChild(actions);
@@ -1163,7 +1165,7 @@ class NoxApp {
       const btn = document.getElementById(btnId);
       if (btn) {
         const orig = btn.textContent;
-        btn.textContent = '✅ Kopiert!';
+        btn.textContent = t('chat.copied');
         setTimeout(() => { btn.textContent = orig; }, 2000);
       }
     } catch {
@@ -1259,7 +1261,7 @@ class NoxApp {
       const cards = this.el.memoryCards;
 
       if (!data.entries || data.entries.length === 0) {
-        cards.innerHTML = '<div class="memory-placeholder">Noch nichts gespeichert.</div>';
+        cards.innerHTML = `<div class="memory-placeholder">${t('activity.nothingSaved')}</div>`;
         return;
       }
 
@@ -1335,7 +1337,7 @@ class NoxApp {
       div.innerHTML = `
         <div style="flex-grow: 1;">
           <div class="history-title">${this._escHtml(item.title)}</div>
-          <div class="history-date">${item.date} (${sessionLength} ${sessionLength === 1 ? 'Nachricht' : 'Nachrichten'})</div>
+          <div class="history-date">${item.date} (${sessionLength} ${sessionLength === 1 ? (currentLang() === 'de' ? 'Nachricht' : 'message') : (currentLang() === 'de' ? 'Nachrichten' : 'messages')})</div>
         </div>
         <button class="btn-icon delete-history-btn" aria-label="Chat löschen" style="color: var(--text-dim); padding: 8px;">✖</button>
       `;
@@ -1343,7 +1345,7 @@ class NoxApp {
       const delBtn = div.querySelector('.delete-history-btn');
       delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if(!confirm("Möchtest du diesen Chat wirklich dauerhaft löschen?")) return;
+        if(!confirm(currentLang() === 'de' ? 'Möchtest du diesen Chat wirklich dauerhaft löschen?' : 'Delete this chat permanently?')) return;
         const filtered = all.filter(s => s.id !== item.id);
         localStorage.setItem(STORE_KEY_HISTORY, JSON.stringify(filtered));
         this._renderHistoryList();
@@ -1557,7 +1559,7 @@ class NoxApp {
     const delBtn = card.querySelector('.delete-btn');
     if (delBtn) {
       delBtn.addEventListener('click', async () => {
-        if (!confirm(`Skill "${skill.name}" wirklich löschen?`)) return;
+        if (!confirm(currentLang() === 'de' ? `Skill "${skill.name}" wirklich löschen?` : `Delete skill "${skill.name}"?`)) return;
         const res = await fetch(`${API}/skills/${encodeURIComponent(skill.name)}`, { method: 'DELETE' });
         if (res.ok) {
           card.remove();
@@ -1574,7 +1576,7 @@ class NoxApp {
 
   _openSkillForm(skill) {
     const isEdit = !!skill;
-    this.el.skillFormTitle.textContent = isEdit ? `Skill bearbeiten: ${skill.name}` : 'Neuen Skill erstellen';
+    this.el.skillFormTitle.textContent = isEdit ? `${t('skills.editTitle')}: ${skill.name}` : t('skills.createTitle');
     this.el.sfName.value        = isEdit ? skill.name        : '';
     this.el.sfName.disabled     = isEdit; // Name kann nicht geändert werden (Primary Key)
     this.el.sfTrigger.value     = isEdit ? skill.trigger     : '';
