@@ -28,6 +28,7 @@ DEFAULT_MODEL = os.environ.get("MIMI_NOX_MODEL", "gemma4:e4b")
 ALLOWED_MIME = {
     "image/png", "image/jpeg", "image/jpg",
     "image/webp", "image/gif", "image/bmp",
+    "image/heic", "image/heif",  # iPhone Kamera-Format
 }
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 

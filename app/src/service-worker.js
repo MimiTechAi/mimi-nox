@@ -7,7 +7,7 @@
  *   - Alles andere: Network-First mit Cache-Fallback
  */
 
-const CACHE_VERSION = 'v7'; // Lokale marked+DOMPurify, kein CDN
+const CACHE_VERSION = 'v8'; // E4B Vision: Attach-Btn (Desktop) + Kamera-Btn (Mobile)
 const CACHE_NAME = `mimi-nox-${CACHE_VERSION}`;
 
 // Statische Assets die pre-gecached werden
