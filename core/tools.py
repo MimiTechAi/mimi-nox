@@ -540,7 +540,27 @@ async def take_screenshot() -> str:
 # Tool Execution Router
 # ===========================================================================
 
-from core.vision import vision_click, vision_type
+# Lazy import: vision requires pyautogui which crashes on headless Linux (no DISPLAY)
+def _get_vision_click():
+    from core.vision import vision_click
+    return vision_click
+
+def _get_vision_type():
+    from core.vision import vision_type
+    return vision_type
+
+async def _vision_click_wrapper(target_description: str) -> str:
+    fn = _get_vision_click()
+    return await fn(target_description)
+
+async def _vision_type_wrapper(text: str, press_enter: bool = False) -> str:
+    fn = _get_vision_type()
+    return await fn(text, press_enter)
+
+# Expose as module-level names for hasattr() checks in tests
+vision_click = _vision_click_wrapper
+vision_type = _vision_type_wrapper
+
 from core.browser import browser_manager
 
 async def browser_go(url: str) -> str:
@@ -574,8 +594,8 @@ TOOL_MAP: dict[str, object] = {
     "run_shell":        run_shell,
     "load_workspace":   load_workspace,
     "analyze_image":    analyze_image,
-    "vision_click":     vision_click,
-    "vision_type":      vision_type,
+    "vision_click":     _vision_click_wrapper,
+    "vision_type":      _vision_type_wrapper,
     "take_screenshot":  take_screenshot,
     "browser_go":         browser_go,
     "browser_screenshot": browser_screenshot,

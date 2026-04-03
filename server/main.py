@@ -49,7 +49,7 @@ async def lifespan(fastapi_app: FastAPI):
                 "and 'Screen Recording' permissions in macOS System Settings > Privacy & Security, "
                 "otherwise vision_click tools will crash immediately."
             )
-    except ImportError:
+    except Exception:
         pass
 
     # --- Background Scheduler ---

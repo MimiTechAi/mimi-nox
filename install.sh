@@ -49,7 +49,21 @@ ok "Python OK"
 # ── 2. Check / Install Ollama ─────────────────────────────────────────────────
 step "Ollama prüfen"
 if command -v ollama >/dev/null 2>&1; then
-  ok "Ollama bereits installiert ($(ollama --version 2>/dev/null || echo 'v?'))"
+  OLLAMA_VER=$(ollama --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")
+  ok "Ollama bereits installiert (v${OLLAMA_VER})"
+
+  # Gemma4 E4B benötigt mindestens Ollama v0.20.0
+  MIN_VER="0.20.0"
+  if printf '%s\n' "$MIN_VER" "$OLLAMA_VER" | sort -V | head -1 | grep -qv "$MIN_VER"; then
+    info "Ollama v${OLLAMA_VER} ist zu alt für ${MIMI_NOX_MODEL} (min. v${MIN_VER})."
+    info "Aktualisiere Ollama..."
+    if [[ "$(uname)" == "Darwin" ]]; then
+      brew upgrade ollama 2>/dev/null || curl -fsSL https://ollama.com/install.sh | sh
+    else
+      curl -fsSL https://ollama.com/install.sh | sh
+    fi
+    ok "Ollama aktualisiert auf $(ollama --version 2>/dev/null || echo 'neueste Version')"
+  fi
 else
   info "Ollama nicht gefunden – wird installiert..."
   if [[ "$(uname)" == "Darwin" ]]; then

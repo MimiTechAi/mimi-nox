@@ -108,10 +108,12 @@ cd mimi-nox
 
 The script handles everything:
 1. ✅ Python version check (≥ 3.10)
-2. ✅ Installs Ollama (if missing)
+2. ✅ Installs Ollama (if missing) or auto-updates if < v0.20.0
 3. ✅ Downloads `gemma4:e4b` (~2.5 GB, one-time)
 4. ✅ Creates virtual environment + dependencies
 5. ✅ Optional instant start
+
+> **Note:** Gemma4 E4B requires Ollama ≥ v0.20.0. The install script detects older versions and updates automatically.
 
 ### Manual setup
 
@@ -159,6 +161,7 @@ A `docker-compose.yml` is in progress. In the meantime, the install script is **
 |---|---|---|
 | **OS** | macOS 13+ / Ubuntu 22+ | macOS 14+ (Apple Silicon) |
 | **Python** | 3.10 | 3.12+ |
+| **Ollama** | ≥ 0.20.0 | latest |
 | **RAM** | 8 GB | 16 GB+ |
 | **Storage** | 5 GB | 20 GB+ |
 | **GPU** | – | M1/M2/M3 or NVIDIA |
@@ -169,8 +172,9 @@ A `docker-compose.yml` is in progress. In the meantime, the install script is **
 |---|---|---|---|
 | Chat, Skills, Memory, all Tools | ✅ | ✅ | ✅ |
 | Headless Browser | ✅ | ✅ | ✅ |
-| Vision Click/Type (Desktop GUI) | ✅ | ⚠️ limited | ❌ |
-| Desktop Screenshot | ✅ | ⚠️ | ❌ |
+| Vision Click/Type (Desktop GUI) | ✅ | ⚠️ X11 required | ❌ |
+| Desktop Screenshot | ✅ | ⚠️ X11 required | ❌ |
+| Headless Server (no GUI) | ✅ | ✅ (graceful degradation) | ✅ |
 | PWA + QR Pairing | ✅ | ✅ | ✅ |
 | TTS (Edge-TTS) | ✅ | ✅ | ✅ |
 

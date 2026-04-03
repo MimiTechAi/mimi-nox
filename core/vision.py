@@ -13,7 +13,19 @@ from pathlib import Path
 
 try:
     import mss
-    import pyautogui
+    # pyautogui's mouseinfo dependency crashes if DISPLAY is not set (headless Linux).
+    # We guard against both KeyError and Xlib connection errors.
+    import os as _os
+    _had_display = "DISPLAY" in _os.environ
+    if not _had_display:
+        _os.environ["DISPLAY"] = ":99"
+    try:
+        import pyautogui
+    except Exception:
+        pyautogui = None
+    finally:
+        if not _had_display:
+            _os.environ.pop("DISPLAY", None)
     from PIL import Image
 except ImportError:
     mss = None
