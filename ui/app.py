@@ -1,7 +1,7 @@
 """
 ◑ MiMi Nox – App
 
-Main Textual application for MiMi Nox (TUI backend).
+Main Textual application for MiMi Nox.
 Branding: ◑ MiMi Nox · Privat. Lokal. Yours.
 MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
 """
@@ -45,7 +45,7 @@ from ui.widgets import ChatView, HistoryInput, StatusBar
 
 class ClawDashApp(App):
     """
-    ClawDash – BlackForest Edition
+    ◑ MiMi Nox – Main Application
 
     keyboard-first TUI for local LLMs via Ollama.
     MiMi Tech AI UG – Bad Liebenzell, Schwarzwald.
@@ -64,7 +64,7 @@ class ClawDashApp(App):
 
     # ── Init ─────────────────────────────────────────────────────────────────
 
-    def __init__(self, model: str = "phi4-mini", reset: bool = False) -> None:
+    def __init__(self, model: str = "gemma4:e4b", reset: bool = False) -> None:
         super().__init__()
         self.model = model
         self._reset_on_start = reset
@@ -554,5 +554,5 @@ class ClawDashApp(App):
         self.query_one(ChatView).clear_display()
 
     def action_quit(self) -> None:
-        """q – quit ClawDash."""
+        """q – quit MiMi Nox."""
         self.exit()

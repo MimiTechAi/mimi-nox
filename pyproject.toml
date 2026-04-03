@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mimi-nox"
-version = "1.0.0"
-description = "◑ MiMi Nox – Local AI Assistant. Privat. Lokal. Yours."
+version = "4.0.0"
+description = "◑ MiMi Nox – Autonomer lokaler AI-Agent. Privat. Lokal. Yours."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "MiMi Tech AI UG", email = "hello@mimiai.de" },
 ]
-keywords = ["tui", "llm", "ollama", "ai", "local", "privacy", "assistant", "mimi-nox"]
+keywords = ["ai", "agent", "ollama", "local", "privacy", "llm", "pwa", "artifacts", "computer-use", "vision", "scheduler", "mimi-nox", "schwarzwald"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -27,21 +27,32 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "textual>=0.70.0",
     "ollama>=0.3.0",
     "ddgs>=2.0.0",
-    "aiofiles>=23.0.0",
     "chromadb>=0.6.0",
     "fastapi>=0.111.0",
     "uvicorn>=0.30.0",
-    "sse-starlette>=2.1.0",
-    "httpx>=0.27.0",
+    "python-multipart>=0.0.9",
+    "pyautogui>=0.9.54",
+    "mss>=9.0.1",
+    "pillow>=10.0.0",
+    "pynput>=1.7.6",
+    "qrcode[pil]>=7.4.2",
+    "playwright>=1.40.0",
+    "apscheduler>=3.10.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "httpx>=0.27.0",
+]
+voice = [
+    "faster-whisper>=1.0.0",
+]
+tui = [
+    "textual>=0.70.0",
 ]
 
 [project.scripts]
@@ -55,7 +66,10 @@ Repository = "https://github.com/mimiai/mimi-nox"
 Issues     = "https://github.com/mimiai/mimi-nox/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["core", "ui"]
+packages = ["core", "ui", "server"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"skills" = "share/mimi-nox/skills"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

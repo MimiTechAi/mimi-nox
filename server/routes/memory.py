@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.memory import Memory
@@ -12,8 +13,9 @@ from core.memory import Memory
 router = APIRouter(tags=["Memory"])
 
 
+@lru_cache(maxsize=1)
 def _get_memory() -> Memory:
-    """Liefert Memory-Instanz mit konfiguriertem Pfad (testbar via ENV)."""
+    """Liefert Memory-Singleton mit konfiguriertem Pfad (testbar via ENV)."""
     path = os.environ.get("MIMI_NOX_MEMORY_DIR")
     return Memory(persist_dir=path) if path else Memory()
 
@@ -31,6 +33,17 @@ class MemoryResult(BaseModel):
     metadata: dict = {}
 
 
+class MemoryEntry(BaseModel):
+    id: str
+    text: str
+    metadata: dict = {}
+
+
+class MemoryListResponse(BaseModel):
+    entries: list[MemoryEntry]
+    total: int
+
+
 class MemorySearchResponse(BaseModel):
     results: list[MemoryResult]
     query: str
@@ -41,6 +54,26 @@ class MemoryStoreResponse(BaseModel):
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────
+
+@router.get("/memory/list", response_model=MemoryListResponse)
+async def memory_list(limit: int = 100) -> MemoryListResponse:
+    """Listet alle Memory-Einträge mit IDs (neueste zuerst)."""
+    memory = _get_memory()
+    raw = memory.list_all(limit=limit)
+    entries = [MemoryEntry(id=e["id"], text=e["text"], metadata=e.get("metadata", {})) for e in raw]
+    return MemoryListResponse(entries=entries, total=len(entries))
+
+
+@router.delete("/memory/{doc_id}")
+async def memory_delete(doc_id: str) -> dict:
+    """Löscht einen einzelnen Memory-Eintrag per ID."""
+    memory = _get_memory()
+    try:
+        memory.delete(doc_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Memory-Eintrag '{doc_id}' nicht gefunden.")
+    return {"deleted": doc_id}
+
 
 @router.get("/memory/search", response_model=MemorySearchResponse)
 async def memory_search(q: str, top_k: int = 5) -> MemorySearchResponse:

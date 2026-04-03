@@ -229,6 +229,87 @@ class SkillLoader:
                 return skill
         return None
 
+    def is_builtin(self, name: str) -> bool:
+        """Gibt True zurück wenn der Skill ein Built-in ist (nicht löschbar)."""
+        return (self._builtin_dir / f"{name}.md").exists()
+
+    def is_user_skill(self, name: str) -> bool:
+        """Gibt True zurück wenn ein Nutzer-Skill mit diesem Namen existiert."""
+        return (self._user_dir / f"{name}.md").exists()
+
+    def save(
+        self,
+        name: str,
+        trigger: str,
+        description: str,
+        tools: list[str],
+        system_prompt: str,
+    ) -> Skill:
+        """
+        Speichert einen Nutzer-Skill als Markdown-Datei.
+
+        Erstellt das Nutzer-Skills-Verzeichnis falls nicht vorhanden.
+        Überschreibt vorhandene Dateien (für Update).
+
+        Sicherheit:
+          - Path-Traversal-Schutz (target muss in _user_dir liegen)
+          - Dateiname wird auf Basisnamen reduziert
+
+        Returns:
+            Das gespeicherte Skill-Objekt (geparst zur Validierung).
+
+        Raises:
+            SkillLoadError:   wenn der resultierende Skill ungültig wäre
+            PermissionError:  bei Path-Traversal-Versuch
+        """
+        self._user_dir.mkdir(parents=True, exist_ok=True)
+
+        # Path-Traversal-Schutz: nur Basisname, kein ../
+        safe_name = Path(name).name
+        if not safe_name or safe_name.startswith("."):
+            raise SkillLoadError(f"Ungültiger Skill-Name: '{name}'")
+
+        path = (self._user_dir / f"{safe_name}.md").resolve()
+        allowed = self._user_dir.resolve()
+        if not str(path).startswith(str(allowed)):
+            raise PermissionError(
+                f"Sicherheitsverletzung: Pfad '{path}' liegt außerhalb "
+                f"des erlaubten Verzeichnisses '{allowed}'."
+            )
+
+        tools_str = ", ".join(tools) if tools else ""
+        content = (
+            f"# {safe_name}\n\n"
+            f"**Trigger**: {trigger}\n"
+            f"**Description**: {description}\n"
+            f"**Tools**: {tools_str}\n\n"
+            f"## System Prompt\n\n"
+            f"{system_prompt}\n"
+        )
+
+        # Validate before writing
+        _parse_skill(safe_name, content)  # raises SkillLoadError if invalid
+
+        path.write_text(content, encoding="utf-8")
+        return _parse_skill(safe_name, content)
+
+    def delete(self, name: str) -> None:
+        """
+        Löscht einen Nutzer-Skill.
+
+        Raises:
+            SkillLoadError: wenn Skill nicht als Nutzer-Skill existiert
+            PermissionError: wenn Skill ein Built-in ist
+        """
+        if self.is_builtin(name):
+            raise PermissionError(
+                f"Built-in Skill '{name}' kann nicht gelöscht werden."
+            )
+        path = self._user_dir / f"{name}.md"
+        if not path.exists():
+            raise SkillLoadError(f"Nutzer-Skill '{name}' nicht gefunden.")
+        path.unlink()
+
     async def run_test(self, name: str) -> SkillTestResult:
         """
         Führt den Selbst-Test eines Skills durch.
@@ -270,7 +351,7 @@ class SkillLoader:
 
         try:
             import os
-            model = os.environ.get("MIMI_NOX_MODEL", "phi4-mini")
+            model = os.environ.get("MIMI_NOX_MODEL", "gemma4:e4b")
             response = await chat_with_tools(
                 model=model,
                 history=history,

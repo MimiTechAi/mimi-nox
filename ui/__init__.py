@@ -1,1 +1,1 @@
-"""ClawDash UI package."""
+"""MiMi Nox UI package."""

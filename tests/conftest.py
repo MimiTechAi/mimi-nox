@@ -1,5 +1,5 @@
 """
-pytest fixtures shared across all ClawDash tests.
+pytest fixtures shared across all MiMi Nox tests.
 """
 
 from __future__ import annotations
@@ -20,10 +20,10 @@ from core.types import Message
 @pytest.fixture
 def tmp_session_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """
-    Redirect ClawDash session path to a temporary directory.
+    Redirect MiMi Nox session path to a temporary directory.
     Each test gets a clean, isolated session directory.
     """
-    session_dir = tmp_path / ".clawdash" / "sessions"
+    session_dir = tmp_path / ".mimi-nox" / "sessions"
     session_dir.mkdir(parents=True, exist_ok=True)
 
     import core.session as session_module

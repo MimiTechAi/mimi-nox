@@ -1,12 +1,12 @@
 """
-ClawDash Swarm Engine – BlackForest Edition
+◑ MiMi Nox – Swarm Engine
 
 Multi-agent pipeline that distributes a task across specialized LLM agents:
 
     /swarm <task>
 
     ┌──────────────┐
-    │   PLANER     │  phi4-mini: zerlegt Aufgabe in Teilaufgaben
+    │   PLANER     │  gemma4:e4b: zerlegt Aufgabe in Teilaufgaben
     └──────┬───────┘
            │ N Teilaufgaben
     ┌──────▼─────────────────────────────┐
@@ -22,6 +22,8 @@ Design rules (same as chat.py):
 - Pure async Python, no Textual imports
 - on_progress callback for streaming UI updates
 - Raises OllamaNotReachableError / OllamaModelNotFoundError as needed
+
+MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
 """
 
 from __future__ import annotations
@@ -36,8 +38,8 @@ import ollama
 from core.chat import OllamaModelNotFoundError, OllamaNotReachableError
 from core.types import Message
 
-# Max parallel specialist agents to prevent overloading small hardware
-MAX_SPECIALISTS = 4
+# Max parallel specialist agents – optimized for E4B (~4B active params, ~3GB each)
+MAX_SPECIALISTS = 3
 
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
@@ -83,13 +85,16 @@ async def _call_model(
     """Single non-streaming model call. Returns the response text."""
     client = _make_client()
     try:
-        response = await client.chat(
-            model=model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            stream=False,
+        response = await asyncio.wait_for(
+            client.chat(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                stream=False,
+            ),
+            timeout=45.0,
         )
         return str(response["message"]["content"]).strip()
     except Exception as exc:

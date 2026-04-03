@@ -70,7 +70,7 @@ class Memory:
             ids=[doc_id],
         )
 
-    def search(self, query: str, top_k: int = 5) -> list[dict]:
+    def search(self, query: str, top_k: int = 15) -> list[dict]:
         """
         Sucht semantisch ähnliche gespeicherte Texte.
 
@@ -108,6 +108,77 @@ class Memory:
     def count(self) -> int:
         """Gibt die Anzahl gespeicherter Einträge zurück."""
         return self._collection.count()
+
+    def list_all(self, limit: int = 100) -> list[dict]:
+        """
+        Gibt alle Memory-Einträge zurück (mit IDs für Delete-Operationen).
+
+        Args:
+            limit: Maximale Anzahl zurückgegebener Einträge
+
+        Returns:
+            Liste von dicts: [{id, text, metadata}]
+        """
+        if self.count() == 0:
+            return []
+
+        result = self._collection.get(limit=limit)
+        output: list[dict] = []
+
+        ids   = result.get("ids") or []
+        docs  = result.get("documents") or []
+        metas = result.get("metadatas") or []
+
+        for doc_id, doc, meta in zip(ids, docs, metas):
+            output.append({
+                "id":       doc_id,
+                "text":     doc,
+                "metadata": meta or {},
+            })
+
+        # Neueste zuerst (nach timestamp)
+        output.sort(key=lambda e: e["metadata"].get("timestamp", 0), reverse=True)
+        return output
+
+    def get_context_injection(self, query: str, max_entries: int = 10) -> str:
+        """
+        Gibt relevante Memory-Einträge als formatierten Kontext-Block zurück.
+        Optimiert für Injection in den System-Prompt (128K Context).
+
+        Args:
+            query:       Suchanfrage (aktuelle Frage des Users)
+            max_entries: Max. Anzahl Einträge
+
+        Returns:
+            Formatierter String oder leerer String wenn keine Einträge.
+        """
+        results = self.search(query, top_k=max_entries)
+        if not results:
+            return ""
+
+        lines = ["\n--- Kontext aus deinem Gedächtnis ---"]
+        for r in results:
+            if r["score"] < 0.3:  # Zu irrelevant
+                continue
+            lines.append(f"• {r['text']}")
+
+        if len(lines) <= 1:
+            return ""
+
+        lines.append("--- Ende Kontext ---\n")
+        return "\n".join(lines)
+
+    def delete(self, doc_id: str) -> None:
+        """
+        Löscht einen einzelnen Memory-Eintrag per ID.
+
+        Raises:
+            KeyError: wenn die ID nicht existiert
+        """
+        existing = self._collection.get(ids=[doc_id])
+        if not existing["ids"]:
+            raise KeyError(f"Memory-Eintrag '{doc_id}' nicht gefunden.")
+        self._collection.delete(ids=[doc_id])
 
     def clear(self) -> None:
         """Löscht alle Einträge. Nicht rückgängig machbar."""

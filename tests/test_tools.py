@@ -222,19 +222,19 @@ class TestReadFile:
     @pytest.mark.asyncio
     async def test_truncates_large_files(self, tmp_path):
         """
-        GIVEN  Datei > 50.000 Zeichen
+        GIVEN  Datei > 100.000 Zeichen (MAX_FILE_CHARS)
         WHEN   read_file(path) aufgerufen
-        THEN   Rückgabe ist auf 50.000 Zeichen gekürzt
+        THEN   Rückgabe ist auf 100.000 Zeichen gekürzt
         AND    Meldung "[Datei gekürzt" ist angefügt
         """
-        big_content = "x" * 60_000
+        big_content = "x" * 120_000
         test_file = tmp_path / "big.txt"
         test_file.write_text(big_content, encoding="utf-8")
 
         with patch.dict(os.environ, {"HOME": str(tmp_path)}):
             result = await read_file(str(test_file))
 
-        assert len(result) <= 50_100  # content + truncation note
+        assert len(result) <= 100_100  # content + truncation note
         assert "gekürzt" in result.lower() or "truncated" in result.lower()
 
 

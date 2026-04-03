@@ -1,12 +1,14 @@
 """
-ClawDash Session Persistence – BlackForest Edition
+◑ MiMi Nox – Session Persistence
 
-JSON-based session persistence in ~/.clawdash/sessions/default.json
+JSON-based session persistence in ~/.mimi-nox/sessions/default.json
 
 Key design decisions:
 - Atomic writes (tmp + rename) to prevent corruption on crash
 - Never raises on load – returns [] on any error (fail-safe)
 - save_session() is safe to call after every message
+
+MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ from core.types import Message
 # Paths
 # ---------------------------------------------------------------------------
 
-SESSION_DIR: Path = Path.home() / ".clawdash" / "sessions"
+SESSION_DIR: Path = Path.home() / ".mimi-nox" / "sessions"
 SESSION_FILE: Path = SESSION_DIR / "default.json"
 
 
@@ -73,7 +75,7 @@ def save_session(messages: list[Message]) -> None:
     Atomically save the session to disk.
 
     Uses write-to-tmp + rename() to prevent corruption on crash.
-    Creates ~/.clawdash/sessions/ if it doesn't exist.
+    Creates ~/.mimi-nox/sessions/ if it doesn't exist.
     Silently ignores write errors (local-first, best-effort).
     """
     try:

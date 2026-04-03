@@ -1,5 +1,5 @@
 """
-Shared type definitions for ClawDash.
+Shared type definitions for MiMi Nox.
 
 Defines the Message TypedDict used as the shared contract
 between all modules (chat, session, ui).

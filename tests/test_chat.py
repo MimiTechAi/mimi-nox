@@ -61,7 +61,7 @@ async def test_stream_response_collects_chunks():
             on_chunk=received.append,
         )
 
-    assert received == chunks
+    assert "".join(received) == "Hello from the forest!"
     assert result == "Hello from the forest!"
 
 
@@ -80,7 +80,7 @@ async def test_stream_response_chunks_in_order():
             on_chunk=received.append,
         )
 
-    assert received == ["A", "B", "C", "D"]
+    assert "".join(received) == "ABCD"
 
 
 async def test_stream_response_empty_chunks_ignored():

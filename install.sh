@@ -4,8 +4,8 @@
 #  install.sh – One-command setup
 #
 #  Usage:
-#    git clone https://github.com/mimiai/clawdash
-#    cd clawdash
+#    git clone https://github.com/mimiai/mimi-nox
+#    cd mimi-nox
 #    ./install.sh
 #
 #  MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
@@ -21,7 +21,7 @@ BOLD='\033[1m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-CLAWDASH_MODEL="${CLAWDASH_MODEL:-gemma4:e4b}"
+MIMI_NOX_MODEL="${MIMI_NOX_MODEL:-gemma4:e4b}"
 
 banner() {
   echo ""
@@ -82,16 +82,16 @@ fi
 ok "Ollama läuft"
 
 # ── 4. Modell pullen ──────────────────────────────────────────────────────────
-step "Modell: ${CLAWDASH_MODEL}"
-if ollama show "${CLAWDASH_MODEL}" >/dev/null 2>&1; then
-  ok "${CLAWDASH_MODEL} bereits vorhanden"
+step "Modell: ${MIMI_NOX_MODEL}"
+if ollama show "${MIMI_NOX_MODEL}" >/dev/null 2>&1; then
+  ok "${MIMI_NOX_MODEL} bereits vorhanden"
 else
-  info "Lade ${CLAWDASH_MODEL} herunter..."
+  info "Lade ${MIMI_NOX_MODEL} herunter..."
   info "(einmalig ~2.5 GB – dauert je nach Internet 2-5 Min)"
   echo ""
-  ollama pull "${CLAWDASH_MODEL}"
+  ollama pull "${MIMI_NOX_MODEL}"
   echo ""
-  ok "${CLAWDASH_MODEL} bereit"
+  ok "${MIMI_NOX_MODEL} bereit"
 fi
 
 # ── 5. Python venv + Dependencies ────────────────────────────────────────────
@@ -119,13 +119,14 @@ echo ""
 echo -e "${NEON}${BOLD}  ✅ Setup abgeschlossen!${NC}"
 echo ""
 echo -e "  ${BOLD}Starten mit:${NC}"
-echo -e "  ${NEON}.venv/bin/mimi-nox${NC}"
+echo -e "  ${NEON}.venv/bin/python run_server.py${NC}"
+echo -e "  → öffne ${NEON}http://127.0.0.1:8765${NC} im Browser"
 echo ""
-echo -e "  ${DIM}Modell wechseln:${NC}"
-echo -e "  ${DIM}.venv/bin/mimi-nox --model llama3.1${NC}"
+echo -e "  ${DIM}TUI-Modus (alternativ):${NC}"
+echo -e "  ${DIM}.venv/bin/mimi-nox${NC}"
 echo ""
 echo -e "  ${DIM}Anderes Modell beim Setup:${NC}"
-echo -e "  ${DIM}CLAWDASH_MODEL=llama3.1 ./install.sh${NC}"
+echo -e "  ${DIM}MIMI_NOX_MODEL=llama3.1 ./install.sh${NC}"
 echo ""
 echo -e "${DIM}  🌲 No cloud. No tracking. Straight from the Black Forest.${NC}"
 echo ""
@@ -135,6 +136,7 @@ if [[ -t 0 ]]; then
   read -rp "  Jetzt starten? [J/n] " REPLY
   REPLY="${REPLY:-J}"
   if [[ "$REPLY" =~ ^[JjYy]$ ]]; then
-    exec .venv/bin/mimi-nox --model "${CLAWDASH_MODEL}"
+    echo -e "\n  ${NEON}▶${NC} Öffne ${NEON}http://127.0.0.1:8765${NC} im Browser\n"
+    exec .venv/bin/python run_server.py
   fi
 fi

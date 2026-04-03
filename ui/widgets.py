@@ -1,5 +1,5 @@
 """
-ClawDash Widgets – BlackForest Edition
+◑ MiMi Nox – Widgets
 
 Three focused, reusable Textual widgets:
 
@@ -12,6 +12,8 @@ Streaming architecture:
     - Static (#streaming-area) holds the CURRENT streaming assistant response
     - On FinalizeAssistantMessage: flush Static → RichLog, clear Static
     This avoids the RichLog.write(end="") API which doesn't exist.
+
+MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
 """
 
 from __future__ import annotations

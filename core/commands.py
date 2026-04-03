@@ -1,5 +1,5 @@
 """
-ClawDash Slash Commands – BlackForest Edition
+◑ MiMi Nox – Slash Commands
 
 Extensible command registry. Add your own commands in 30 seconds:
 
@@ -11,6 +11,8 @@ The {input} placeholder is replaced with the user's text after the command.
 Example:
     User types:  /post AI productivity
     Resolves to: "Write a professional LinkedIn post about... AI productivity"
+
+MiMi Tech AI UG – Bad Liebenzell, Schwarzwald
 """
 
 from __future__ import annotations
@@ -51,6 +53,8 @@ COMMANDS: dict[str, str] = {
     # /swarm is handled specially by the App (triggers multi-agent pipeline)
     # The template here is only used as a fallback usage hint.
     "/swarm": "__swarm__:{input}",
+    # /learn triggers the Skill-Builder (KI erstellt sich selbst neue Skills)
+    "/learn": "__learn__:{input}",
 }
 
 # ---------------------------------------------------------------------------
@@ -64,10 +68,12 @@ _COMMAND_DESCRIPTIONS: dict[str, str] = {
     "/explain": "Explain a concept simply",
     "/commit":  "Write a Git commit message",
     "/swarm":   "Multi-agent parallel pipeline",
+    "/learn":   "Lerne ein Muster und erstelle einen neuen Skill",
 }
 
 # Commands that trigger special app-level behaviour (not resolved to a prompt)
 SWARM_COMMANDS: frozenset[str] = frozenset({"/swarm"})
+LEARN_COMMANDS: frozenset[str] = frozenset({"/learn"})
 
 
 def resolve_command(raw_input: str) -> str:
@@ -154,6 +160,22 @@ def extract_swarm_task(text: str) -> str:
     Extract the task from a /swarm command.
     "/swarm Plan a REST API" → "Plan a REST API"
     "/swarm" → ""  (caller should show usage hint)
+    """
+    parts = text.strip().split(maxsplit=1)
+    return parts[1].strip() if len(parts) > 1 else ""
+
+
+def is_learn_command(text: str) -> bool:
+    """Return True if text is a /learn command (handled by skill-builder)."""
+    parts = text.strip().split(maxsplit=1)
+    return bool(parts) and parts[0].lower() in LEARN_COMMANDS
+
+
+def extract_learn_topic(text: str) -> str:
+    """
+    Extract the topic from a /learn command.
+    "/learn FastAPI-Routen Stil" → "FastAPI-Routen Stil"
+    "/learn" → ""  (caller should show usage hint)
     """
     parts = text.strip().split(maxsplit=1)
     return parts[1].strip() if len(parts) > 1 else ""

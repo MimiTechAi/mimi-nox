@@ -13,7 +13,7 @@ import argparse
 import sys
 from pathlib import Path
 
-# Sicherstellen dass das ClawDash-Verzeichnis im Pfad ist
+# Sicherstellen dass das MiMi-Nox-Verzeichnis im Pfad ist
 sys.path.insert(0, str(Path(__file__).parent))
 
 import uvicorn
@@ -21,7 +21,7 @@ import uvicorn
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="◑ MiMi Nox API Server")
-    parser.add_argument("--host",   default="127.0.0.1", help="Host (default: 127.0.0.1)")
+    parser.add_argument("--host",   default="0.0.0.0", help="Host (default: 0.0.0.0)")
     parser.add_argument("--port",   default=8765, type=int, help="Port (default: 8765)")
     parser.add_argument("--reload", action="store_true", help="Auto-Reload im Dev-Modus")
     args = parser.parse_args()

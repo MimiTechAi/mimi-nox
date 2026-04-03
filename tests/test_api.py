@@ -22,14 +22,19 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def client(tmp_path):
     """
-    FastAPI TestClient mit isoliertem tmp_path für Memory + Profile.
-    Überschreibt die Default-Pfade via Umgebungsvariablen.
+    FastAPI TestClient mit isoliertem tmp_path für Memory + Profile + Skills.
+    Überschreibt alle Default-Pfade via Umgebungsvariablen.
     """
     import os
-    os.environ["MIMI_NOX_MEMORY_DIR"] = str(tmp_path / "chroma_db")
-    os.environ["MIMI_NOX_PROFILE_PATH"] = str(tmp_path / "user_profile.json")
+    os.environ["MIMI_NOX_MEMORY_DIR"]       = str(tmp_path / "chroma_db")
+    os.environ["MIMI_NOX_PROFILE_PATH"]     = str(tmp_path / "user_profile.json")
     os.environ["MIMI_NOX_CORRECTIONS_PATH"] = str(tmp_path / "corrections.md")
-    os.environ["MIMI_NOX_FEEDBACK_DIR"] = str(tmp_path)
+    os.environ["MIMI_NOX_FEEDBACK_DIR"]     = str(tmp_path)
+    os.environ["MIMI_NOX_SKILLS_DIR"]       = str(tmp_path / "skills")
+
+    # lru_cache auf Memory-Singleton zurücksetzen für Test-Isolation
+    from server.routes.memory import _get_memory
+    _get_memory.cache_clear()
 
     from server.main import create_app
     app = create_app()
@@ -295,3 +300,172 @@ class TestFeedbackEndpoint:
         })
         assert response.status_code == 200
         assert response.json()["saved"] is True
+
+
+# ── Skills CRUD (Phase 5) ──────────────────────────────────────────────────
+
+class TestSkillsCRUD:
+    """Skills: Erstellen, Bearbeiten, Löschen von Nutzer-Skills."""
+
+    _SKILL_PAYLOAD = {
+        "name": "mein-test-skill",
+        "trigger": "/test",
+        "description": "Ein Testskill für Unit-Tests.",
+        "tools": ["web_search"],
+        "system_prompt": "Du bist ein Test-Assistent. Antworte immer mit: TEST OK.",
+    }
+
+    def test_create_skill_returns_201(self, client):
+        """
+        GIVEN  Gültiges Skill-Payload
+        WHEN   POST /api/skills
+        THEN   Status 201
+        AND    Response enthält name, trigger, description
+        """
+        response = client.post("/api/skills", json=self._SKILL_PAYLOAD)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "mein-test-skill"
+        assert data["trigger"] == "/test"
+
+    def test_created_skill_appears_in_list(self, client):
+        """
+        GIVEN  Skill erstellt via POST /api/skills
+        WHEN   GET /api/skills
+        THEN   Skill ist in der Liste
+        """
+        client.post("/api/skills", json=self._SKILL_PAYLOAD)
+        response = client.get("/api/skills")
+        names = [s["name"] for s in response.json()["skills"]]
+        assert "mein-test-skill" in names
+
+    def test_created_skill_detail_accessible(self, client):
+        """
+        GIVEN  Skill erstellt
+        WHEN   GET /api/skills/mein-test-skill
+        THEN   Status 200 und system_prompt korrekt
+        """
+        client.post("/api/skills", json=self._SKILL_PAYLOAD)
+        response = client.get("/api/skills/mein-test-skill")
+        assert response.status_code == 200
+        assert "TEST OK" in response.json()["system_prompt"]
+
+    def test_update_skill_returns_200(self, client):
+        """
+        GIVEN  Skill existiert
+        WHEN   PUT /api/skills/mein-test-skill mit neuer description
+        THEN   Status 200
+        AND    Neue description gespeichert
+        """
+        client.post("/api/skills", json=self._SKILL_PAYLOAD)
+        updated = {**self._SKILL_PAYLOAD, "description": "Aktualisierte Beschreibung"}
+        response = client.put("/api/skills/mein-test-skill", json=updated)
+        assert response.status_code == 200
+
+        detail = client.get("/api/skills/mein-test-skill")
+        assert detail.json()["description"] == "Aktualisierte Beschreibung"
+
+    def test_delete_user_skill_returns_200(self, client):
+        """
+        GIVEN  Nutzer-Skill erstellt
+        WHEN   DELETE /api/skills/mein-test-skill
+        THEN   Status 200
+        AND    Skill nicht mehr im Listing
+        """
+        client.post("/api/skills", json=self._SKILL_PAYLOAD)
+        response = client.delete("/api/skills/mein-test-skill")
+        assert response.status_code == 200
+
+        skills_after = client.get("/api/skills").json()["skills"]
+        names = [s["name"] for s in skills_after]
+        assert "mein-test-skill" not in names
+
+    def test_delete_builtin_skill_returns_403(self, client):
+        """
+        GIVEN  Built-in Skill 'web-researcher'
+        WHEN   DELETE /api/skills/web-researcher
+        THEN   Status 403 (Builtin Skills dürfen nicht gelöscht werden)
+        """
+        response = client.delete("/api/skills/web-researcher")
+        assert response.status_code == 403
+
+    def test_delete_nonexistent_skill_returns_404(self, client):
+        """
+        GIVEN  Skill existiert nicht
+        WHEN   DELETE /api/skills/phantomskill
+        THEN   Status 404
+        """
+        response = client.delete("/api/skills/phantomskill")
+        assert response.status_code == 404
+
+    def test_create_skill_missing_fields_returns_422(self, client):
+        """
+        GIVEN  Payload ohne system_prompt
+        WHEN   POST /api/skills
+        THEN   Status 422 (Validation Error)
+        """
+        response = client.post("/api/skills", json={
+            "name": "broken",
+            "trigger": "/broken",
+        })
+        assert response.status_code == 422
+
+
+# ── Memory CRUD (Phase 5) ─────────────────────────────────────────────────
+
+class TestMemoryCRUD:
+    """Memory: Einträge auflisten und gezielt löschen."""
+
+    def test_memory_list_empty(self, client):
+        """
+        GIVEN  Leere Memory-Datenbank
+        WHEN   GET /api/memory/list
+        THEN   Status 200
+        AND    {"entries": [], "total": 0}
+        """
+        response = client.get("/api/memory/list")
+        assert response.status_code == 200
+        data = response.json()
+        assert "entries" in data
+        assert data["total"] == 0
+
+    def test_memory_list_after_store(self, client):
+        """
+        GIVEN  Zwei Texte gespeichert
+        WHEN   GET /api/memory/list
+        THEN   Beide Einträge sichtbar mit "id" Key
+        """
+        client.post("/api/memory/store", json={"text": "Erste Notiz"})
+        client.post("/api/memory/store", json={"text": "Zweite Notiz"})
+        response = client.get("/api/memory/list")
+        data = response.json()
+        assert data["total"] >= 2
+        assert all("id" in e for e in data["entries"])
+
+    def test_memory_delete_entry(self, client):
+        """
+        GIVEN  Text gespeichert + ID bekannt
+        WHEN   DELETE /api/memory/{id}
+        THEN   Status 200
+        AND    Eintrag nicht mehr in GET /api/memory/list
+        """
+        client.post("/api/memory/store", json={"text": "Zu löschende Notiz"})
+        entries = client.get("/api/memory/list").json()["entries"]
+        assert len(entries) >= 1
+        entry_id = entries[0]["id"]
+
+        response = client.delete(f"/api/memory/{entry_id}")
+        assert response.status_code == 200
+
+        entries_after = client.get("/api/memory/list").json()["entries"]
+        ids_after = [e["id"] for e in entries_after]
+        assert entry_id not in ids_after
+
+    def test_memory_delete_nonexistent_returns_404(self, client):
+        """
+        GIVEN  Nicht-existente ID
+        WHEN   DELETE /api/memory/ghost-id-123
+        THEN   Status 404
+        """
+        response = client.delete("/api/memory/ghost-id-123")
+        assert response.status_code == 404

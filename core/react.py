@@ -20,6 +20,7 @@ Design-Entscheidungen:
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass
 from typing import Callable
@@ -103,13 +104,16 @@ async def reflect(
     )
 
     try:
-        raw = await client.chat(
-            model=model,
-            messages=[
-                {"role": "system", "content": REFLEXION_SYSTEM_PROMPT},
-                {"role": "user",   "content": prompt},
-            ],
-            stream=False,
+        raw = await asyncio.wait_for(
+            client.chat(
+                model=model,
+                messages=[
+                    {"role": "system", "content": REFLEXION_SYSTEM_PROMPT},
+                    {"role": "user",   "content": prompt},
+                ],
+                stream=False,
+            ),
+            timeout=30.0,
         )
         content: str = raw.message.content or ""
     except Exception:

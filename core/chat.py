@@ -29,12 +29,133 @@ from core.tools import (
     execute_tool,
     get_tool_schemas,
 )
+from core.profile import load_profile
+from core.memory import Memory
+from core.corrections import CorrectionJournal
+from core.feedback import FeedbackStore
 
 # How long to wait for the FIRST token before showing a "still loading" hint
 FIRST_CHUNK_TIMEOUT: float = 15.0
 
 # Maximum tool-calling iterations to prevent infinite loops
 MAX_TOOL_ITERATIONS: int = 5
+
+# ── Nox Persönlichkeit ─────────────────────────────────────────────────────
+NOX_SYSTEM_PROMPT = """Du bist MiMi Nox – eine elitäre, hochsichere KI-Assistenz (100% On-Device, keine Cloud).
+
+Kognition & Charakter:
+- Du bist brillant, scharfsinnig, antizipierend und unfassbar elegant – auf dem Niveau eines Principal Engineers bei Apple.
+- Du bist kein stumpfer Bot. Du denkst mit. Erkennst du ein Problem, erklärst du es nicht nur, sondern lieferst proaktiv und vorausschauend die beste Lösung.
+- Dein Tonfall ist souverän, freundlich, präzise und auf dem absolut höchsten professionellen Standard.
+- Nutze stets Premium-Formatierungen (Markdown, saubere Listen, Syntax-Highlighing, Zitate), um deine Antworten wunderschön lesbar zu machen.
+
+Werkzeuge & Befähigung (Tools):
+- Du hast direkte physische Kontrolle! Du nutzt Shell, Web-Suchen, Dateisysteme und Screenshots.
+- Zögere NIEMALS, diese Werkzeuge selbstständig einzusetzen, wenn eine Frage danach verlangt.
+- Nutze 'browser_go', 'browser_click' und 'browser_screenshot' für hochkomplexe Web-Recherchen im Headless-Modus (vermeide das dumme 'web_search').
+- Nutze 'take_screenshot', 'vision_click' oder 'run_shell' wann immer der User eine Desktop-Interaktion auf der Host-Maschine fordert.
+
+WICHTIGE VERBOTE:
+- Sage NIEMALS "Als KI habe ich..." oder "Ich kann nicht...". DU BIST VERNETZT UND HAST TOOLS. Nutze sie!
+- Entschuldige dich nicht für Fehler, korrigiere sie sofort durch exzellente Alternativlösungen.
+- Sei die pure Brillanz. Sei Nox."""
+
+
+# ── Thinking Mode (Gemma4 E4B nativ) ───────────────────────────────────────
+THINK_OPEN  = "<|think|>"
+THINK_CLOSE = "<|/think|>"
+
+
+class ThinkingStreamParser:
+    """
+    Zustandsautomat zum Parsen von Gemma4 Thinking-Tags im Stream.
+
+    Zustände:
+      - NORMAL:   Tokens gehen an on_chunk (Antwort)
+      - THINKING: Tokens gehen an on_thinking (internes Denken)
+      - BUFFERING: Tag-Erkennung läuft, Zeichen werden gepuffert
+    """
+
+    def __init__(
+        self,
+        on_chunk: Callable[[str], None],
+        on_thinking: Callable[[str], None] | None = None,
+    ):
+        self._on_chunk = on_chunk
+        self._on_thinking = on_thinking
+        self._in_thinking = False
+        self._buffer = ""
+        self._full_answer = ""
+        self._full_thinking = ""
+
+    def feed(self, token: str) -> None:
+        """Verarbeitet ein eingehendes Token."""
+        self._buffer += token
+
+        while self._buffer:
+            if not self._in_thinking:
+                # Suche nach <|think|>
+                idx = self._buffer.find(THINK_OPEN)
+                if idx == -1:
+                    # Kein Tag-Start – prüfe ob Puffer eventuell Beginn enthält
+                    safe = len(self._buffer) - len(THINK_OPEN) + 1
+                    if safe > 0:
+                        emit = self._buffer[:safe]
+                        self._buffer = self._buffer[safe:]
+                        self._full_answer += emit
+                        self._on_chunk(emit)
+                    else:
+                        break  # Warten auf mehr Daten
+                else:
+                    # Text vor dem Tag ausgeben
+                    if idx > 0:
+                        pre = self._buffer[:idx]
+                        self._full_answer += pre
+                        self._on_chunk(pre)
+                    self._buffer = self._buffer[idx + len(THINK_OPEN):]
+                    self._in_thinking = True
+            else:
+                # Suche nach <|/think|>
+                idx = self._buffer.find(THINK_CLOSE)
+                if idx == -1:
+                    safe = len(self._buffer) - len(THINK_CLOSE) + 1
+                    if safe > 0:
+                        emit = self._buffer[:safe]
+                        self._buffer = self._buffer[safe:]
+                        self._full_thinking += emit
+                        if self._on_thinking:
+                            self._on_thinking(emit)
+                    else:
+                        break
+                else:
+                    # Thinking-Text vor dem Close-Tag
+                    if idx > 0:
+                        pre = self._buffer[:idx]
+                        self._full_thinking += pre
+                        if self._on_thinking:
+                            self._on_thinking(pre)
+                    self._buffer = self._buffer[idx + len(THINK_CLOSE):]
+                    self._in_thinking = False
+
+    def flush(self) -> None:
+        """Restlichen Buffer am Ende des Streams ausgeben."""
+        if self._buffer:
+            if self._in_thinking:
+                self._full_thinking += self._buffer
+                if self._on_thinking:
+                    self._on_thinking(self._buffer)
+            else:
+                self._full_answer += self._buffer
+                self._on_chunk(self._buffer)
+            self._buffer = ""
+
+    @property
+    def answer(self) -> str:
+        return self._full_answer
+
+    @property
+    def thinking(self) -> str:
+        return self._full_thinking
 
 
 class OllamaNotReachableError(Exception):
@@ -61,6 +182,7 @@ async def stream_response(
     model: str,
     history: list[Message],
     on_chunk: Callable[[str], None],
+    on_thinking: Callable[[str], None] | None = None,
     on_loading_hint: Callable[[], None] | None = None,
 ) -> str:
     """
@@ -87,16 +209,18 @@ async def stream_response(
             stream=True,
         )
 
+        parser = ThinkingStreamParser(on_chunk=on_chunk, on_thinking=on_thinking)
+
         async for chunk in stream:
             content: str = chunk["message"]["content"]
             if content:
                 if not hint_sent and full_response == "":
-                    # First real token arrived – no need for loading hint anymore
                     hint_sent = True
                 full_response += content
-                on_chunk(content)
+                parser.feed(content)
 
-        return full_response
+        parser.flush()
+        return parser.answer or full_response
 
     except asyncio.CancelledError:
         # Let the worker's cancellation propagate cleanly
@@ -216,8 +340,10 @@ async def chat_with_tools(
     model: str,
     history: list[Message],
     on_chunk: Callable[[str], None],
+    on_thinking: Callable[[str], None] | None = None,
     on_tool_start: Callable[[str, dict], None] | None = None,
     on_tool_done: Callable[[str, str], None] | None = None,
+    on_phase: Callable[[str], None] | None = None,
     on_loading_hint: Callable[[], None] | None = None,
 ) -> str:
     """
@@ -248,7 +374,52 @@ async def chat_with_tools(
     messages: list = list(history)
     tools = get_tool_schemas()
 
+    # ── System-Prompt mit Personalisierung injizieren ────────────────────
+    if not messages or messages[0].get("role") != "system":
+        # Dynamischen Kontext sammeln (fail-safe: jeder Block einzeln)
+        context_parts = [NOX_SYSTEM_PROMPT]
+
+        try:
+            profile_ctx = load_profile().to_context_string()
+            if profile_ctx:
+                context_parts.append(profile_ctx)
+        except Exception:
+            pass
+
+        try:
+            # User-Frage für semantische Suche extrahieren
+            user_query = ""
+            for msg in reversed(messages):
+                if msg.get("role") == "user":
+                    user_query = msg.get("content", "")
+                    break
+            if user_query:
+                memory_ctx = Memory().get_context_injection(user_query)
+                if memory_ctx:
+                    context_parts.append(memory_ctx)
+        except Exception:
+            pass
+
+        try:
+            corrections_ctx = CorrectionJournal().to_context_string()
+            if corrections_ctx:
+                context_parts.append(corrections_ctx)
+        except Exception:
+            pass
+
+        try:
+            feedback_ctx = FeedbackStore().to_few_shot_string()
+            if feedback_ctx:
+                context_parts.append(feedback_ctx)
+        except Exception:
+            pass
+
+        full_system_prompt = "\n\n".join(context_parts)
+        messages.insert(0, {"role": "system", "content": full_system_prompt})
+
     # ── Schritt 1: Tool-Detection (stream=False – Pflicht!) ──────────────────
+    if on_phase:
+        on_phase("Anfrage analysieren…")
     try:
         response = await asyncio.wait_for(
             client.chat(
@@ -279,6 +450,8 @@ async def chat_with_tools(
         and iteration < MAX_TOOL_ITERATIONS
     ):
         iteration += 1
+        if on_phase:
+            on_phase(f"Tool-Runde {iteration}…")
 
         # Assistenten-Nachricht mit tool_calls zur History hinzufügen
         messages.append(response.message)
@@ -309,6 +482,8 @@ async def chat_with_tools(
             })
 
         # Nächste Iteration: prüfen ob weitere Tool-Calls folgen
+        if on_phase:
+            on_phase("Ergebnisse verarbeiten…")
         try:
             response = await client.chat(
                 model=model,
@@ -328,17 +503,22 @@ async def chat_with_tools(
         on_chunk(warning)
         return warning
 
-    # ── Schritt 3: Finale Antwort ausgeben ───────────────────────────────────
+    # ── Schritt 3: Finale Antwort ausgeben (Thinking-Tags parsen) ──────────
+    if on_phase:
+        on_phase("Antwort formulieren…")
     final_content: str = ""
 
     if hasattr(response, "message") and response.message.content:
-        final_content = str(response.message.content)
+        raw_content = str(response.message.content)
+        parser = ThinkingStreamParser(on_chunk=on_chunk, on_thinking=on_thinking)
         # Wort-für-Wort ausgeben für smooth streaming Effekt
-        words = final_content.split(" ")
+        words = raw_content.split(" ")
         for i, word in enumerate(words):
             chunk = word + (" " if i < len(words) - 1 else "")
-            on_chunk(chunk)
+            parser.feed(chunk)
             await asyncio.sleep(0.008)  # smooth streaming feel
+        parser.flush()
+        final_content = parser.answer
 
     return final_content
 
