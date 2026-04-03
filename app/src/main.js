@@ -571,9 +571,10 @@ class NoxApp {
     this._hideWelcome();
     this._streamStart = Date.now();
 
-    this.renderUserBubble(text);
-    this._clearAttachedImage(); // Bild nach dem Senden entfernen
-    this._startStreaming(text);
+    this.renderUserBubble(text, this._attachedImageB64); // Bild in Bubble zeigen
+    const imageToSend = this._attachedImageB64;          // Referenz sichern
+    this._clearAttachedImage();                           // UI-Preview entfernen
+    this._startStreaming(text, imageToSend);              // Gesichertes Bild senden
   }
 
   async _showMobileModal() {
@@ -704,7 +705,7 @@ class NoxApp {
     </div>`;
   }
 
-  async _startStreaming(text) {
+  async _startStreaming(text, imageB64 = null) {
     this.isStreaming = true;
     
     this.el.sendBtn.textContent = '⏹';
@@ -738,7 +739,7 @@ class NoxApp {
           model: this.model, 
           history: this.history,
           autonomous: this.isMobilePWA === true,
-          images: this._attachedImageB64 ? [this._attachedImageB64] : [],
+          images: imageB64 ? [imageB64] : [],
         }),
         signal:  this._abortController.signal,
       });
@@ -1039,10 +1040,20 @@ class NoxApp {
     if (this.el.welcome) this.el.welcome.style.display = 'none';
   }
 
-  renderUserBubble(text) {
+  renderUserBubble(text, imageB64 = null) {
     const el = document.createElement('div');
-    el.className  = 'bubble-user';
-    el.textContent = text;
+    el.className = 'bubble-user';
+    // Bild-Thumbnail in User-Bubble anzeigen
+    if (imageB64) {
+      const img = document.createElement('img');
+      img.src = `data:image/jpeg;base64,${imageB64}`;
+      img.style.cssText = 'max-width:220px;max-height:220px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px;border:1px solid rgba(34,197,94,0.3)';
+      img.alt = 'Hochgeladenes Bild';
+      el.appendChild(img);
+    }
+    const span = document.createElement('span');
+    span.textContent = text;
+    el.appendChild(span);
     this.el.messages.appendChild(el);
     this._scrollToBottom();
     return el;
