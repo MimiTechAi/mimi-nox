@@ -8,6 +8,8 @@
   <link rel="apple-touch-icon" href="icon-192.png" />
   <meta name="description" data-i18n="meta.description" content="◑ MiMi Nox – Local AI. Private. Local. Yours." />
   <title>◑ MiMi Nox</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -55,10 +57,11 @@
     <div class="topbar-right" style="display:flex; align-items:center; gap:16px;">
       
       <!-- Mobile Pairing Button -->
-      <button class="btn-secondary" id="btn-mobile-pairing" data-i18n="nav.mobilePairing" data-i18n-title="nav.mobilePairing" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: var(--text-dim); border-radius: 4px; cursor: pointer; font-size: 13px; padding: 4px 10px; height: 28px; line-height: 1; transition: all 0.2s;">📱 Connect Phone</button>
+      <!-- Mobile Pairing Button (Fix 13: improved contrast) -->
+      <button class="btn-secondary" id="btn-mobile-pairing" data-i18n="nav.mobilePairing" data-i18n-title="nav.mobilePairing" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.3); color: var(--green-light); border-radius: 4px; cursor: pointer; font-size: 13px; padding: 4px 10px; height: 28px; line-height: 1; transition: all 0.2s;">📱 Connect Phone</button>
 
-      <!-- Autonomous Mode Toggle -->
-      <label class="autonom-mode-label" data-i18n-title="nav.autonom" style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text-dim);">
+      <!-- Autonomous Mode Toggle (Fix 9: tooltip) -->
+      <label class="autonom-mode-label" title="Im autonomen Modus führt die KI Shell-Befehle und Tool-Aufrufe ohne Rückfrage aus. ⚠️ Nur für erfahrene Nutzer empfohlen." style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="autonom-toggle" autocomplete="off" style="accent-color: var(--orange); cursor:pointer;">
         <span style="user-select:none;" data-i18n="nav.autonom">🤖 Autonomous</span>
       </label>
@@ -99,11 +102,11 @@
               <span class="card-icon">🔍</span>
               <span data-i18n="welcome.searchNews">Search latest news</span>
             </button>
-            <button class="welcome-card" data-prompt="/files read my file on the Desktop" role="listitem">
+            <button class="welcome-card" data-prompt="/files List all files on my Desktop" role="listitem">
               <span class="card-icon">📁</span>
               <span data-i18n="welcome.analyzeFile">Analyze a file</span>
             </button>
-            <button class="welcome-card" data-prompt="/write Write a professional email for" role="listitem">
+            <button class="welcome-card" data-prompt="/write Write a professional email about rescheduling a meeting" role="listitem">
               <span class="card-icon">✏️</span>
               <span data-i18n="welcome.writeText">Write a text</span>
             </button>
@@ -123,7 +126,7 @@
 
         <!-- Terminal Feed -->
         <div class="ap-terminal" id="ap-terminal" aria-live="polite" data-i18n-aria="activity.title">
-          <div class="terminal-placeholder" data-i18n="activity.waiting">Waiting for input…</div>
+          <div class="terminal-placeholder" data-i18n="activity.waiting">💡 Try "/research" to search the web<br>💡 Type "/files" to browse documents<br>💡 Attach an image with 📎 for AI vision</div>
         </div>
 
         <!-- Memory -->
@@ -326,14 +329,12 @@
 
     <!-- Skill Chips -->
     <div class="skill-chips" id="skill-chips" role="list" aria-label="Skill shortcuts">
-      <button class="skill-chip" data-trigger="/async" role="listitem" data-i18n-title="chip.research">⚡ /async</button>
-      <button class="skill-chip" data-trigger="/test" role="listitem" data-i18n-title="chip.review">⚡ /test</button>
-      <button class="skill-chip" data-trigger="/review" role="listitem" data-i18n-title="chip.review">💻 /review</button>
+      <button class="skill-chip" data-trigger="/research" role="listitem" data-i18n-title="chip.research">🔍 /research</button>
       <button class="skill-chip" data-trigger="/files" role="listitem" data-i18n-title="chip.files">📁 /files</button>
+      <button class="skill-chip" data-trigger="/review" role="listitem" data-i18n-title="chip.review">💻 /review</button>
+      <button class="skill-chip" data-trigger="/write" role="listitem" data-i18n-title="chip.write">✏️ /write</button>
       <button class="skill-chip" data-trigger="/shell" role="listitem" data-i18n-title="chip.shell">>_ /shell</button>
       <button class="skill-chip" data-trigger="/scan" role="listitem" data-i18n-title="chip.scan">⚡ /scan</button>
-      <button class="skill-chip" data-trigger="/research" role="listitem" data-i18n-title="chip.research">🔍 /research</button>
-      <button class="skill-chip" data-trigger="/write" role="listitem" data-i18n-title="chip.write">✏️ /write</button>
     </div>
 
     <!-- Input Row -->

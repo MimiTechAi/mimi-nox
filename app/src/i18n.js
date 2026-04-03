@@ -43,7 +43,7 @@ const translations = {
 
     // ── Activity Panel ──
     'activity.title': '⬡ KI-Aktivität',
-    'activity.waiting': 'Warte auf Eingabe…',
+    'activity.waiting': '💡 Tippe "/research" für Web-Suche\n💡 "/files" zum Dateien durchsuchen\n💡 Hänge ein Bild mit 📎 an für KI-Vision',
     'activity.about': '🧠 Was ich über dich weiß',
     'activity.nothingSaved': 'Noch nichts gespeichert.',
 
@@ -199,7 +199,7 @@ const translations = {
 
     // ── Activity Panel ──
     'activity.title': '⬡ AI Activity',
-    'activity.waiting': 'Waiting for input…',
+    'activity.waiting': '💡 Try "/research" to search the web\n💡 Type "/files" to browse documents\n💡 Attach an image with 📎 for AI vision',
     'activity.about': '🧠 What I know about you',
     'activity.nothingSaved': 'Nothing saved yet.',
 

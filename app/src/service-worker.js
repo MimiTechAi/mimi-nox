@@ -7,7 +7,7 @@
  *   - Alles andere: Network-First mit Cache-Fallback
  */
 
-const CACHE_VERSION = 'v10'; // i18n: DE/EN language support
+const CACHE_VERSION = 'v11'; // UI/UX audit fixes: status, chips, mobile cards
 const CACHE_NAME = `mimi-nox-${CACHE_VERSION}`;
 
 // Statische Assets die pre-gecached werden

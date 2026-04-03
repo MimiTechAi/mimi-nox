@@ -49,13 +49,15 @@ class NoxApp {
   }
 
   // ── Initialisierung ─────────────────────────────────────
-  init() {
+  async init() {
     window.noxApp = this;
     this._queryElements();
     this._bindEvents();
     applyTranslations(); // i18n: translate all data-i18n elements
     // Model is hardcoded (gemma4:e4b)
-    this.checkHealth();
+
+    // Fix 1+7: await health check so status text updates immediately
+    await this.checkHealth();
     this.loadSkillChips();
 
     // Artifact Panel initialisieren (DOM muss bereit sein)
@@ -237,7 +239,37 @@ class NoxApp {
     // Auto-resize textarea
     this.el.chatInput.addEventListener('input', () => this._autoResize());
 
-
+    // Fix 16: Drag-and-Drop Images on Chat Area
+    if (this.el.chatArea) {
+      this.el.chatArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        this.el.chatArea.style.outline = '2px dashed var(--green)';
+        this.el.chatArea.style.outlineOffset = '-4px';
+      });
+      this.el.chatArea.addEventListener('dragleave', () => {
+        this.el.chatArea.style.outline = '';
+        this.el.chatArea.style.outlineOffset = '';
+      });
+      this.el.chatArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        this.el.chatArea.style.outline = '';
+        this.el.chatArea.style.outlineOffset = '';
+        const file = e.dataTransfer.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            this._attachedImageB64 = ev.target.result.split(',')[1];
+            if (this.el.imgPreviewBar) {
+              this.el.imgPreviewBar.style.display = 'flex';
+              this.el.imgPreviewName.textContent = file.name;
+              this.el.imgPreviewThumb.src = ev.target.result;
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
 
     // Activity panel toggle (◀)
     this.el.apToggle.addEventListener('click', () => this.toggleActivityPanel());
@@ -480,6 +512,8 @@ class NoxApp {
   _setStatus(state) {
     const dot  = this.el.statusDot;
     const text = this.el.statusText;
+    // Remove data-i18n so applyTranslations() won't overwrite dynamic status
+    text.removeAttribute('data-i18n');
     if (state === 'connected') {
       dot.className  = 'status-dot';
       text.className = 'status-text';
@@ -487,7 +521,7 @@ class NoxApp {
     } else {
       dot.className  = 'status-dot offline';
       text.className = 'status-text offline';
-      text.textContent = 'Offline';
+      text.textContent = t('status.offline');
     }
   }
 
