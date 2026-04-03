@@ -76,10 +76,11 @@ async def _get_bounding_box(b64_image: str, target: str, reference_crop_b64: str
     if reference_crop_b64:
         images.append(reference_crop_b64)
     
+    import os
     client = ollama.AsyncClient()
     try:
         response = await client.generate(
-            model="llama3.2-vision", # Llama 3.2 11B Vision is optimal for this on macOS
+            model=os.environ.get("MIMI_NOX_VISION_MODEL", os.environ.get("MIMI_NOX_MODEL", "gemma4:e4b")),
             prompt=system_prompt,
             images=images,
             options={"temperature": 0.0}

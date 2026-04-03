@@ -140,12 +140,44 @@ class NoxApp {
       // Layout areas (needed for mobile close-menu handler)
       chatArea:       document.getElementById('chat-area'),
       bottombar:      document.querySelector('.bottombar'),
+      // Image Attach (E4B Vision)
+      imgInput:       document.getElementById('img-input'),
+      attachBtn:      document.getElementById('attach-btn'),
+      imgPreviewBar:  document.getElementById('img-preview-bar'),
+      imgPreviewName: document.getElementById('img-preview-name'),
+      imgPreviewThumb:document.getElementById('img-preview-thumb'),
+      imgRemoveBtn:   document.getElementById('img-remove-btn'),
     };
   }
 
   _bindEvents() {
     // Send
     this.el.sendBtn.addEventListener('click', () => this.submitMessage());
+
+    // Image Attach Button (E4B Vision)
+    this._attachedImageB64 = null;
+    if (this.el.attachBtn && this.el.imgInput) {
+      this.el.attachBtn.addEventListener('click', () => this.el.imgInput.click());
+      this.el.imgInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          // Base64 ohne Data-URL-Prefix
+          const b64 = ev.target.result.split(',')[1];
+          this._attachedImageB64 = b64;
+          if (this.el.imgPreviewBar) {
+            this.el.imgPreviewBar.style.display = 'flex';
+            this.el.imgPreviewName.textContent = file.name;
+            this.el.imgPreviewThumb.src = ev.target.result;
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      if (this.el.imgRemoveBtn) {
+        this.el.imgRemoveBtn.addEventListener('click', () => this._clearAttachedImage());
+      }
+    }
     
     // New Chat
     if (this.el.btnNewChat) {
@@ -398,6 +430,15 @@ class NoxApp {
     }
   }
 
+  /** Bild-Anhang entfernen (nach Send oder manuell) */
+  _clearAttachedImage() {
+    this._attachedImageB64 = null;
+    if (this.el.imgInput) this.el.imgInput.value = '';
+    if (this.el.imgPreviewBar) this.el.imgPreviewBar.style.display = 'none';
+    if (this.el.imgPreviewThumb) this.el.imgPreviewThumb.src = '';
+    if (this.el.imgPreviewName) this.el.imgPreviewName.textContent = '';
+  }
+
   clearSession() {
     this.history = [];
     this.sessionId = Date.now();
@@ -409,6 +450,7 @@ class NoxApp {
     this.el.chatInput.focus();
     this.el.chatInput.value = '';
     this._autoResize();
+    this._clearAttachedImage(); // Bild-Anhang beim neuen Chat zurücksetzen
   }
 
   // ── Health Check ────────────────────────────────────────
@@ -530,6 +572,7 @@ class NoxApp {
     this._streamStart = Date.now();
 
     this.renderUserBubble(text);
+    this._clearAttachedImage(); // Bild nach dem Senden entfernen
     this._startStreaming(text);
   }
 
@@ -694,7 +737,8 @@ class NoxApp {
           message: text, 
           model: this.model, 
           history: this.history,
-          autonomous: this.isMobilePWA === true
+          autonomous: this.isMobilePWA === true,
+          images: this._attachedImageB64 ? [this._attachedImageB64] : [],
         }),
         signal:  this._abortController.signal,
       });

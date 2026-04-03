@@ -497,7 +497,7 @@ async def analyze_image(
     client = ollama.AsyncClient()
     try:
         response = await client.chat(
-            model=os.environ.get("MIMI_NOX_MODEL", "llama3.2-vision"),
+            model=os.environ.get("MIMI_NOX_MODEL", "gemma4:e4b"),
             messages=[
                 {
                     "role": "user",

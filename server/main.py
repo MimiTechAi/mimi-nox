@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from server.routes import health, chat, memory, skills, profile, feedback, audio, mobile, schedule
+from server.routes import health, chat, memory, skills, profile, feedback, audio, mobile, schedule, vision
 from core import __version__, __edition__, __tagline__
 from core.scheduler import nox_scheduler
 
@@ -93,6 +93,7 @@ def create_app() -> FastAPI:
     app.include_router(audio.router,    prefix="/api")
     app.include_router(mobile.router,   prefix="/api")
     app.include_router(schedule.router, prefix="/api")
+    app.include_router(vision.router,   prefix="/api")
 
     # ── Statische Dateien (Audio-Aufnahmen für Playback) ───────────────────
     audio_dir = Path(

@@ -868,6 +868,36 @@ body {
   border-color: var(--green);
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
 }
+/* ── Attach Button (E4B Vision) ─────────────────────────────────────────── */
+.attach-btn {
+  background: transparent;
+  border: 1px solid var(--green-dim);
+  color: var(--text-dim);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--anim-speed), border-color var(--anim-speed),
+              color var(--anim-speed), box-shadow var(--anim-speed);
+}
+.attach-btn:hover {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: var(--green);
+  color: var(--green-light);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.15);
+}
+.attach-btn.has-image {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: var(--green);
+  color: var(--green);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+}
+
 .mic-btn.recording {
   background: rgba(239, 68, 68, 0.15);
   border-color: #ef4444;

@@ -41,6 +41,7 @@ class StreamRequest(BaseModel):
     model: str = DEFAULT_MODEL
     history: list[dict] = []
     autonomous: bool = False
+    images: list[str] = []  # Base64-kodierte Bilder für E4B Multimodal
 
 
 class ApproveRequest(BaseModel):
@@ -98,7 +99,11 @@ async def chat_stream(request: StreamRequest) -> StreamingResponse:
 
         async def run() -> None:
             messages = list(request.history)
-            messages.append({"role": "user", "content": request.message})
+            # ── Bilder in User-Message einbauen (E4B Multimodal) ──────────
+            user_msg: dict = {"role": "user", "content": request.message}
+            if request.images:
+                user_msg["images"] = request.images
+            messages.append(user_msg)
             model = request.model
 
             _done_sent = False
