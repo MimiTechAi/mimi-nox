@@ -167,6 +167,17 @@ class OllamaNotReachableError(Exception):
         )
 
 
+class OllamaModelBusyError(Exception):
+    """Raised when Ollama is reachable but the model is busy (timeout)."""
+
+    def __init__(self, model: str, timeout: float) -> None:
+        self.model = model
+        self.timeout = timeout
+        super().__init__(
+            f"Model '{model}' is busy or loading (timeout after {timeout}s). Try again."
+        )
+
+
 class OllamaModelNotFoundError(Exception):
     """Raised when the requested model is not available locally."""
 
@@ -229,7 +240,7 @@ async def stream_response(
     except Exception as exc:
         exc_str = str(exc).lower()
 
-        if any(kw in exc_str for kw in ("connection", "connect", "refused", "socket")):
+        if any(kw in exc_str for kw in ("refused", "socket")):
             raise OllamaNotReachableError() from exc
 
         if "not found" in exc_str or "does not exist" in exc_str:
@@ -418,27 +429,49 @@ async def chat_with_tools(
         messages.insert(0, {"role": "system", "content": full_system_prompt})
 
     # ── Schritt 1: Tool-Detection (stream=False – Pflicht!) ──────────────────
+    TOOL_DETECT_TIMEOUT = 90.0  # Großzügiges Timeout (Modell muss denken)
+    MAX_RETRIES = 1
+
     if on_phase:
         on_phase("Anfrage analysieren…")
-    try:
-        response = await asyncio.wait_for(
-            client.chat(
-                model=model,
-                messages=messages,
-                tools=tools,
-                stream=False,
-            ),
-            timeout=60.0,
-        )
-    except asyncio.TimeoutError:
+
+    response = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            response = await asyncio.wait_for(
+                client.chat(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    stream=False,
+                ),
+                timeout=TOOL_DETECT_TIMEOUT,
+            )
+            break  # Erfolg → Loop verlassen
+        except asyncio.TimeoutError:
+            if attempt < MAX_RETRIES:
+                if on_phase:
+                    on_phase("Modell laden… (Retry)")
+                continue  # Nochmal versuchen
+            # Letzter Versuch auch Timeout → prüfen ob Ollama überhaupt lebt
+            try:
+                test_client = ollama.AsyncClient()
+                await asyncio.wait_for(test_client.list(), timeout=3.0)
+                # Ollama lebt, aber Modell antwortet nicht → busy
+                raise OllamaModelBusyError(model, TOOL_DETECT_TIMEOUT)
+            except (asyncio.TimeoutError, Exception):
+                # Ollama wirklich tot
+                raise OllamaNotReachableError()
+        except Exception as exc:
+            exc_str = str(exc).lower()
+            if any(kw in exc_str for kw in ("refused", "socket")):
+                raise OllamaNotReachableError() from exc
+            if "not found" in exc_str or "does not exist" in exc_str:
+                raise OllamaModelNotFoundError(model) from exc
+            raise
+
+    if response is None:
         raise OllamaNotReachableError()
-    except Exception as exc:
-        exc_str = str(exc).lower()
-        if any(kw in exc_str for kw in ("connection", "connect", "refused", "socket")):
-            raise OllamaNotReachableError() from exc
-        if "not found" in exc_str or "does not exist" in exc_str:
-            raise OllamaModelNotFoundError(model) from exc
-        raise
 
     # ── Schritt 2: Tool-Calling Loop ─────────────────────────────────────────
     iteration = 0

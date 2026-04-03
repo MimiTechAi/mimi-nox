@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.chat import OllamaNotReachableError, OllamaModelNotFoundError, chat_with_tools
+from core.chat import OllamaNotReachableError, OllamaModelNotFoundError, OllamaModelBusyError, chat_with_tools
 from core.react import reflect, react_loop
 from core.commands import is_learn_command, extract_learn_topic
 from core.skill_builder import build_skill
@@ -283,6 +283,8 @@ async def chat_stream(request: StreamRequest) -> StreamingResponse:
 
             except OllamaNotReachableError:
                 emit({"type": "error", "msg": "Ollama nicht erreichbar — starte: ollama serve"})
+            except OllamaModelBusyError as exc:
+                emit({"type": "error", "msg": f"⏳ Modell beschäftigt – bitte nochmal versuchen (Timeout nach {exc.timeout:.0f}s)"})
             except OllamaModelNotFoundError as exc:
                 emit({"type": "error", "msg": f"Modell '{exc.model}' nicht installiert"})
             except Exception as exc:
