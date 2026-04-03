@@ -1763,7 +1763,7 @@ class NoxApp {
     this.el.micBtn.classList.remove('recording');
     this.el.micContainer.classList.remove('active');
     this.el.micBtn.textContent = '🎙️';
-    this.el.chatInput.placeholder = 'Nachricht eingeben… oder / für Skills';
+    this.el.chatInput.placeholder = t('chat.placeholder');
 
     // Waveform-Balken zurücksetzen
     const bars = this.el.waveformBars?.querySelectorAll('span');
@@ -1820,7 +1820,7 @@ class NoxApp {
       });
 
       // UI Config wiederherstellen
-      this.el.chatInput.placeholder = 'Nachricht eingeben… oder / für Skills';
+      this.el.chatInput.placeholder = t('chat.placeholder');
       this.el.chatInput.disabled = false;
       this.el.chatInput.focus();
 
@@ -1849,7 +1849,7 @@ class NoxApp {
       this._addActivity('error', '❌ Audio-Upload fehlgeschlagen');
       
       // Fallback UI Reset
-      this.el.chatInput.placeholder = 'Nachricht eingeben… oder / für Skills';
+      this.el.chatInput.placeholder = t('chat.placeholder');
       this.el.chatInput.disabled = false;
     }
   }

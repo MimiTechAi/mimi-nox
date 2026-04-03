@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -400,7 +400,7 @@
         <span class="logo-name">MiMi Nox</span>
         <span class="status-dot" id="status-dot"></span>
       </div>
-      <button class="btn-clear" id="btn-clear">✨ Neu</button>
+      <button class="btn-clear" id="btn-clear">✨ New</button>
     </header>
 
     <!-- Chat -->
@@ -408,7 +408,8 @@
       <div class="welcome-msg" id="welcome">
         <span class="icon">◑</span>
         <div class="title">Hey 👋</div>
-        Schreib mir – ich bin dein lokaler KI-Agent.
+        <span id="mobile-welcome-text">Write me – I'm your local AI agent.</span>
+      </div>
       </div>
     </div>
 
@@ -424,7 +425,7 @@
         <!-- Kamera / Galerie (E4B Vision) -->
         <input type="file" id="img-input" accept="image/*,image/heic,image/heif" style="display:none" />
         <button class="camera-btn" id="camera-btn" title="📷 Foto / Galerie">📷</button>
-        <textarea class="chat-input" id="input" rows="1" placeholder="Nachricht…" autocomplete="off" autocorrect="off" spellcheck="true"></textarea>
+        <textarea class="chat-input" id="input" rows="1" placeholder="Message…" autocomplete="off" autocorrect="off" spellcheck="true"></textarea>
         <button class="mic-btn" id="mic-btn">🎙️</button>
         <button class="send-btn" id="send-btn">➤</button>
       </div>
@@ -437,6 +438,17 @@
   <script>
     const API = '/api';
     const MODEL = 'gemma4:e4b';
+
+    // ── i18n (lightweight, inline) ──
+    const _lang = (localStorage.getItem('mimi-nox-lang') || navigator.language || 'en').substring(0, 2);
+    const isDE = _lang === 'de';
+    if (isDE) {
+      document.documentElement.lang = 'de';
+      document.getElementById('btn-clear').textContent = '✨ Neu';
+      document.getElementById('mobile-welcome-text').textContent = 'Schreib mir – ich bin dein lokaler KI-Agent.';
+      document.getElementById('input').placeholder = 'Nachricht…';
+    }
+    const _t = (de, en) => isDE ? de : en;
 
     const $ = id => document.getElementById(id);
     const chat = $('chat');
@@ -657,7 +669,7 @@
         // Vorlesen-Button
         const speakBtn = document.createElement('button');
         speakBtn.className = 'speak-btn';
-        speakBtn.textContent = '🔊 Vorlesen';
+        speakBtn.textContent = _t('🔊 Vorlesen', '🔊 Listen');
         speakBtn.onclick = () => speakText(full, speakBtn);
         bubble.appendChild(speakBtn);
 
@@ -678,20 +690,20 @@
     // ── TTS ──
     let currentAudio = null;
     async function speakText(text, btn = null) {
-      if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; if (btn) btn.textContent = '🔊 Vorlesen'; return; }
+      if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; if (btn) btn.textContent = _t('🔊 Vorlesen', '🔊 Listen'); return; }
       let clean = text.replace(/```[\s\S]*?```/g, ' Codeblock. ').replace(/<[^>]+>/g, '').replace(/[*_~`#\[\]()]/g, '').trim();
       if (!clean) return;
-      if (btn) btn.textContent = '⏳ Lade…';
+      if (btn) btn.textContent = _t('⏳ Lade…', '⏳ Loading…');
       try {
         const voice = localStorage.getItem('mimi_nox_voice') || 'de-DE-KillianNeural';
         const res = await fetch(`${API}/audio/synthesize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: clean, voice }) });
         if (!res.ok) throw 0;
         const data = await res.json();
         currentAudio = new Audio(data.audio_url);
-        currentAudio.onended = () => { if (btn) btn.textContent = '🔊 Vorlesen'; };
-        if (btn) btn.textContent = '⏹ Stopp';
+        currentAudio.onended = () => { if (btn) btn.textContent = _t('🔊 Vorlesen', '🔊 Listen'); };
+        if (btn) btn.textContent = _t('⏹ Stopp', '⏹ Stop');
         await currentAudio.play();
-      } catch { if (btn) btn.textContent = '🔊 Vorlesen'; }
+      } catch { if (btn) btn.textContent = _t('🔊 Vorlesen', '🔊 Listen'); }
     }
 
     // ── Helpers ──
