@@ -89,7 +89,7 @@ MiMi Nox ist ein **vollständig lokaler, autonomer AI-Agent** – kein Abonnemen
 ### Ein-Befehl-Setup
 
 ```bash
-git clone https://github.com/mimiai/mimi-nox
+git clone https://github.com/MimiTechAi/mimi-nox
 cd mimi-nox
 ./install.sh
 ```
@@ -104,7 +104,7 @@ Das Skript erledigt alles:
 ### Manuell / Entwicklung
 
 ```bash
-git clone https://github.com/mimiai/mimi-nox
+git clone https://github.com/MimiTechAi/mimi-nox
 cd mimi-nox
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,voice]"
