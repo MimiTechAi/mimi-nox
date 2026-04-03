@@ -577,15 +577,28 @@
     });
     input.addEventListener('input', autoResize);
 
-    // Fix 10: Welcome Cards — tap to send prompt
-    document.querySelectorAll('.welcome-card').forEach(card => {
-      card.addEventListener('click', () => {
+    // Fix 10 & interne Links: Click Delegation am Chat-Fenster
+    chat.addEventListener('click', (e) => {
+      const card = e.target.closest('.welcome-card');
+      if (card) {
         const prompt = card.dataset.prompt;
         if (prompt) {
           input.value = prompt;
           send();
         }
-      });
+        return;
+      }
+
+      const link = e.target.closest('a');
+      if (link && link.href) {
+        const url = new URL(link.href, window.location.origin);
+        if (url.origin === window.location.origin) {
+          e.preventDefault(); // 404 in der SPA verhindern
+        } else {
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        }
+      }
     });
 
     // Fix 11: Skill Chips — tap to fill input

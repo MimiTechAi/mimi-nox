@@ -284,12 +284,31 @@ class NoxApp {
       this._highlightChip(chip);
     });
 
-    // Willkommens-Karten
+    // Willkommens-Karten & interne Links
     document.getElementById('chat-area').addEventListener('click', (e) => {
+      // 1) Willkommens-Karten
       const card = e.target.closest('.welcome-card');
-      if (!card) return;
-      this.el.chatInput.value = card.dataset.prompt;
-      this.submitMessage();
+      if (card) {
+        this.el.chatInput.value = card.dataset.prompt;
+        this.submitMessage();
+        return;
+      }
+
+      // 2) Links abfangen (MD interne/externe Links)
+      const link = e.target.closest('a');
+      if (link && link.href) {
+        // Falls es sich um eine Navigation innerhalb der SPA handelt (404-Vermeidung)
+        const url = new URL(link.href, window.location.origin);
+        if (url.origin === window.location.origin) {
+          e.preventDefault();
+          console.log("Interne Navigation abgewiesen:", url.pathname);
+          // Man könnte hier optional eine API aufrufen, z.B. /api/open
+        } else {
+          // Externe verlinkungen im neuen Tab öffnen
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        }
+      }
     });
 
     // Tabs
