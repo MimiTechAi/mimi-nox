@@ -40,8 +40,11 @@ def get_mobile_qr(request: Request) -> MobileQRResponse:
         ip = get_local_ip()
         target_url = f"http://{ip}:{port}"
     
+    # Mobile users get the clean chat-only page
+    mobile_url = f"{target_url}/mobile.html"
+    
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
-    qr.add_data(target_url)
+    qr.add_data(mobile_url)
     qr.make(fit=True)
     
     img = qr.make_image(fill_color="black", back_color="white")
@@ -49,7 +52,7 @@ def get_mobile_qr(request: Request) -> MobileQRResponse:
     img.save(buf, format='PNG')
     qr_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
     
-    return MobileQRResponse(url=target_url, qr_base64=qr_base64)
+    return MobileQRResponse(url=mobile_url, qr_base64=qr_base64)
 
 
 @router.post("/mobile/ping")

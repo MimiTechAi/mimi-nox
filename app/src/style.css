@@ -1399,133 +1399,239 @@ body {
 }
 
 /* ============================================================
-   MOBILE RESPONSIVE (PWA)
+   MOBILE RESPONSIVE (max-width: 768px)
+   Shared baseline for any mobile browser
    ============================================================ */
 @media (max-width: 768px) {
-  /* Topbar Anpassungen */
+
+  /* ── Topbar: nur Logo + Status-Dot ── */
   .topbar {
-    padding: 0 10px;
+    padding: 0 14px;
+    height: 52px;
   }
   .btn-hamburger {
-    display: block !important;
+    display: none !important; /* Kein Hamburger – kein Panel */
   }
   .logo-tagline {
-    display: none; /* Tagline frisst Platz */
+    display: none;
   }
+  /* Nav-Tabs komplett weg auf Mobile */
   .topnav {
-    display: flex; /* Tabs bleiben inline, aber wir verbergen Text */
-    overflow-x: auto;
+    display: none !important;
   }
-  .topnav .tab {
-    font-size: 11px; /* Kleinerer Text auf Handys */
-    padding: 4px 6px;
+  /* QR-Button: auf Mobile macht er null Sinn */
+  #btn-mobile-pairing {
+    display: none !important;
   }
-  .topbar-right {
-    min-width: unset;
-    gap: 8px;
+  /* Autonom-Toggle: nur Checkbox, kein Text */
+  .autonom-mode-label span {
+    display: none;
   }
-  .topbar-right .btn-secondary {
-    font-size: 0; /* Text verstecken, nur Icon zeigen */
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: none;
-  }
-  .topbar-right .btn-secondary::before {
-    content: "📱";
-    font-size: 18px;
+  .autonom-mode-label {
+    gap: 0;
   }
   #status-text {
-    display: none; /* Nur den gruenen Punkt zeigen */
+    display: none;
   }
-  .autonom-mode-label span {
-    display: none; /* Checkbox Text verstecken */
+  .topbar-right {
+    gap: 10px;
+    min-width: unset;
   }
 
-  /* Chat Anpassungen */
+  /* ── Hintergrund: kein Forest auf Mobile (Performance + Ablenkung) ── */
+  .forest-bg {
+    display: none;
+  }
+
+  /* ── Welcome-Screen: kein Splash, nur minimale Begrüßung ── */
+  .welcome-cards {
+    display: none !important; /* Quick-Action-Karten weg */
+  }
+  .welcome {
+    gap: 8px;
+    padding-top: 40px;
+  }
+  .welcome-glow {
+    font-size: 36px;
+  }
+  .welcome-heading {
+    font-size: 20px;
+  }
+  .welcome-sub {
+    font-size: 13px;
+  }
+
+  /* ── Chat-Bereich: 100% Breite, mehr Raum ── */
   .chat-area {
-    padding: 16px 12px 0;
+    padding: 12px 10px 0;
   }
   .bubble-user, .bubble-ai-wrap {
-    max-width: 90%; /* Mehr Platz am Handy nutzen */
+    max-width: 92%;
   }
   .bubble-user {
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: 14px;
+    border-radius: 18px 18px 4px 18px;
   }
   .bubble-ai {
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: 14px;
+    border-radius: 18px 18px 18px 4px;
   }
 
-  /* Activity Panel => Off-Canvas */
+  /* ── Activity Panel: Off-Canvas (erreichbar per Swipe/Toggle) ── */
   .activity-panel {
     position: fixed;
     top: var(--topbar-h);
     bottom: var(--bottom-h);
-    right: -100%; /* Versteckt */
-    width: 85%;
+    right: -100%;
+    width: 88%;
     max-width: 340px;
     z-index: 500;
-    box-shadow: -4px 0 20px rgba(0,0,0,0.8);
-    transition: right 0.3s ease;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.9);
+    transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .activity-panel.mobile-open {
     right: 0;
   }
 
-  /* Skill-Chips & Input Area */
+  /* ── Bottombar: schmaler, kein Skill-Chip-Block ── */
   .bottombar {
-    padding: 8px 12px 10px;
-    /* Safe area margins for iOS devices without home button */
+    padding: 8px 10px 10px;
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    gap: 6px;
   }
+  /* Skill-Chips auf Mobile verstecken – zu viel Rauschen */
   .skill-chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    display: none !important;
   }
-  .skill-chips::-webkit-scrollbar { display: none; }
+  /* Input-Hint (Keyboard-Shortcuts) auf Touch sinnlos */
+  .input-hint {
+    display: none !important;
+  }
   .input-wrap {
-    padding: 4px 4px 4px 10px;
+    padding: 6px 6px 6px 12px;
+    border-radius: 24px; /* Runder wie Telegram */
   }
   .chat-input {
     font-size: 16px; /* Verhindert iOS Auto-Zoom! */
   }
+  .send-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+  }
+  .mic-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+  }
+
+  /* ── Onboarding Modal: voller Screen ── */
+  .modal-box {
+    padding: 28px 20px;
+    width: 95%;
+  }
+  .ob-categories {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
 }
 
 /* ============================================================
-   MOBILE PWA ZEN MODE (Autonomous Mobile Only)
-   Hides Desktop-Only UI elements on small screens.
-   Aktuelle HTML-Klassen: .activity-panel, .ap-toggle, .topnav not present.
-   The layout uses .main.flex-row with .chat-area + .activity-panel.
+   MOBILE PWA ZEN MODE (body.mobile-pwa-mode)
+   Wird gesetzt wenn window.innerWidth <= 768.
+   Telegram-Style: nur Chat, kein Overhead.
    ============================================================ */
+
+/* Panel + Toggle komplett weg */
 body.mobile-pwa-mode .activity-panel,
 body.mobile-pwa-mode .ap-toggle {
   display: none !important;
 }
 
+/* Chat-Bereich nutzt volle Breite */
 body.mobile-pwa-mode .chat-area {
   flex: 1;
   width: 100% !important;
   max-width: 100% !important;
 }
 
+/* Topbar: nur Logo zentriert + Status-Dot rechts */
 body.mobile-pwa-mode .topbar {
-  justify-content: center;
-  padding: 0 12px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 14px;
 }
-
 body.mobile-pwa-mode .logo {
-  flex: unset;
-  justify-content: center;
-  margin: 0 auto;
+  justify-content: flex-start;
+  grid-column: 1;
+}
+body.mobile-pwa-mode .topnav {
+  display: none !important;
+}
+body.mobile-pwa-mode .topbar-right {
+  grid-column: 3;
+  justify-content: flex-end;
+  min-width: unset;
 }
 
+/* Alle Desktop-spezifischen Elemente endgültig weg */
 body.mobile-pwa-mode .topnav,
-body.mobile-pwa-mode #mobile-qr-btn {
+body.mobile-pwa-mode #mobile-qr-btn,
+body.mobile-pwa-mode #btn-mobile-pairing,
+body.mobile-pwa-mode .btn-hamburger,
+body.mobile-pwa-mode .logo-tagline,
+body.mobile-pwa-mode .forest-bg,
+body.mobile-pwa-mode .welcome-cards,
+body.mobile-pwa-mode .skill-chips,
+body.mobile-pwa-mode .input-hint,
+body.mobile-pwa-mode .ap-toggle {
   display: none !important;
+}
+
+/* ── Tool-Activity Toast (nur Mobile anzeigen) ── */
+.mobile-toast {
+  position: fixed;
+  top: calc(var(--topbar-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(4, 14, 6, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--green-dim);
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 12px;
+  color: var(--green-light);
+  font-family: var(--font-mono);
+  z-index: 900;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+  max-width: calc(100vw - 40px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.mobile-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Bubble-Styles: Telegram-rounded auf Mobile ── */
+@media (max-width: 768px) {
+  .bubble-ai-wrap {
+    gap: 4px;
+  }
+  .bubble-ai-wrap .bubble-actions {
+    opacity: 1; /* immer sichtbar auf touch */
+  }
+  /* Breitere Nachrichten-Bubbles */
+  .messages {
+    padding: 0 2px;
+  }
 }

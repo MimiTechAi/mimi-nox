@@ -1165,6 +1165,30 @@ class NoxApp {
     while (terminal.children.length > 20) {
       terminal.removeChild(terminal.firstChild);
     }
+
+    // ── Mobile Toast: Tool-Aktivität als diskretes Pill anzeigen ──
+    if (this.isMobilePWA && (type === 'cmd' || type === 'progress' || type === 'done' || type === 'done_inline' || type === 'error')) {
+      this._showMobileToast(text, type);
+    }
+  }
+
+  _showMobileToast(text, type) {
+    if (!this._toastEl) {
+      this._toastEl = document.createElement('div');
+      this._toastEl.className = 'mobile-toast';
+      document.body.appendChild(this._toastEl);
+    }
+    const el = this._toastEl;
+    const emoji = type === 'error' ? '⚠ ' : type === 'done' || type === 'done_inline' ? '✓ ' : '⬡ ';
+    el.textContent = emoji + text;
+    el.style.color = type === 'error' ? '#fca5a5' : type === 'done' || type === 'done_inline' ? 'var(--green)' : 'var(--green-light)';
+
+    // Einblenden
+    el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      el.classList.remove('show');
+    }, 2500);
   }
 
   toggleActivityPanel() {

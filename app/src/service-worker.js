@@ -7,13 +7,14 @@
  *   - Alles andere: Network-First mit Cache-Fallback
  */
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6'; // Mobile Telegram-Style Redesign
 const CACHE_NAME = `mimi-nox-${CACHE_VERSION}`;
 
 // Statische Assets die pre-gecached werden
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
+  '/mobile.html',
   '/style.css',
   '/main.js',
   '/artifact.js',

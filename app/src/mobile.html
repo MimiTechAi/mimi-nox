@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#020504" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="description" content="◑ MiMi Nox – Chat" />
+  <title>◑ MiMi Nox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    /* ── Design Tokens (aus Schwarzwald Edition) ── */
+    :root {
+      --bg: #020504;
+      --panel: #040a04;
+      --bubble-user: #134e1c;
+      --bubble-ai: #080f08;
+      --green: #22c55e;
+      --green-light: #4ade80;
+      --green-dim: #166534;
+      --text: #f0fdf4;
+      --text-muted: #6b7280;
+      --text-dim: #374151;
+      --font-main: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+      --topbar-h: 52px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-main);
+      font-size: 15px;
+      line-height: 1.5;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout: Header + Chat + Input ── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh; /* Dynamic viewport height für mobile */
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: var(--topbar-h);
+      padding: 0 16px;
+      background: rgba(4, 10, 4, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(34, 197, 94, 0.08);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      font-size: 28px;
+      color: var(--green);
+      filter: drop-shadow(0 0 8px rgba(34,197,94,0.6));
+      animation: pulse-glow 3s infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(34,197,94,0.6)); }
+      50%       { filter: drop-shadow(0 0 14px rgba(34,197,94,0.9)); }
+    }
+    .logo-name {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse-dot 2s infinite;
+    }
+    .status-dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 6px var(--green); }
+      50%       { box-shadow: 0 0 12px var(--green); }
+    }
+    .btn-clear {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-family: var(--font-main);
+      transition: all 0.2s;
+    }
+    .btn-clear:active {
+      background: rgba(34,197,94,0.1);
+      border-color: var(--green-dim);
+      color: var(--green-light);
+    }
+
+    /* ── Chat Area ── */
+    .chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    .chat::-webkit-scrollbar { display: none; }
+
+    /* Willkommen */
+    .welcome-msg {
+      text-align: center;
+      padding: 60px 20px 30px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .welcome-msg .icon { font-size: 40px; display: block; margin-bottom: 12px; color: var(--green); filter: drop-shadow(0 0 12px rgba(34,197,94,0.6)); }
+    .welcome-msg .title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+
+    /* Bubbles */
+    .msg { max-width: 88%; animation: slide-in 0.15s ease-out; }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--bubble-user);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 18px 18px 4px 18px;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .msg.ai {
+      align-self: flex-start;
+      background: var(--bubble-ai);
+      border: 1px solid rgba(34,197,94,0.06);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 18px 18px 18px 4px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Thinking-Indicator */
+    .thinking {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 8px 0;
+      color: var(--green-dim);
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+    .thinking .dots span {
+      display: inline-block;
+      width: 5px; height: 5px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: dot-bounce 1.2s infinite;
+    }
+    .thinking .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot-bounce {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* Streaming cursor blink */
+    .msg.ai.streaming::after {
+      content: "▊";
+      color: var(--green);
+      animation: blink 0.8s infinite;
+      margin-left: 1px;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* Vorlesen-Button */
+    .speak-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 12px;
+      padding: 4px 8px;
+      cursor: pointer;
+      margin-top: 4px;
+      border-radius: 10px;
+      font-family: var(--font-main);
+      transition: all 0.2s;
+    }
+    .speak-btn:active { color: var(--green); background: rgba(34,197,94,0.08); }
+
+    /* ── Markdown in AI Bubbles ── */
+    .msg.ai p { margin-bottom: 8px; }
+    .msg.ai p:last-child { margin-bottom: 0; }
+    .msg.ai ul, .msg.ai ol { padding-left: 18px; margin-bottom: 8px; }
+    .msg.ai li { margin-bottom: 3px; }
+    .msg.ai strong { color: var(--green-light); font-weight: 600; }
+    .msg.ai em { color: #d1fae5; }
+    .msg.ai h1, .msg.ai h2, .msg.ai h3 { color: var(--green-light); margin: 10px 0 6px; font-weight: 700; }
+    .msg.ai h1 { font-size: 17px; }
+    .msg.ai h2 { font-size: 15px; }
+    .msg.ai h3 { font-size: 13px; }
+    .msg.ai code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.12);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #86efac;
+    }
+    .msg.ai pre {
+      background: rgba(2,5,4,0.9);
+      border: 1px solid rgba(34,197,94,0.08);
+      border-left: 3px solid var(--green-dim);
+      border-radius: 4px 8px 8px 4px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    .msg.ai pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12px;
+      color: var(--green-light);
+      line-height: 1.6;
+    }
+    .msg.ai a { color: var(--green); text-decoration: underline; }
+    .msg.ai blockquote {
+      border-left: 3px solid var(--green-dim);
+      padding-left: 10px;
+      color: var(--text-muted);
+      margin: 6px 0;
+    }
+
+    /* ── Input Bar ── */
+    .input-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 10px 12px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      background: rgba(4, 10, 4, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(34, 197, 94, 0.06);
+      flex-shrink: 0;
+    }
+    .input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      background: rgba(8, 15, 8, 0.9);
+      border: 1px solid rgba(34, 197, 94, 0.1);
+      border-radius: 22px;
+      padding: 6px 6px 6px 14px;
+      gap: 6px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-wrap:focus-within {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.12);
+    }
+    .chat-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-main);
+      font-size: 16px;
+      line-height: 1.4;
+      resize: none;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .chat-input::placeholder { color: var(--text-dim); }
+    .send-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: var(--green);
+      color: var(--bg);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .send-btn:active { transform: scale(0.92); }
+    .send-btn:disabled { background: var(--green-dim); }
+    .send-btn.stop { background: #ef4444; }
+    .mic-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--green-light);
+      font-size: 18px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .mic-btn:active { background: rgba(34,197,94,0.1); }
+    .mic-btn.recording {
+      background: rgba(239,68,68,0.15);
+      color: #ef4444;
+      animation: mic-pulse 1.5s infinite;
+    }
+    @keyframes mic-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+      50%      { box-shadow: 0 0 10px 3px rgba(239,68,68,0.15); }
+    }
+
+    /* ── Toast Notification ── */
+    .toast {
+      position: fixed;
+      top: calc(var(--topbar-h) + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: rgba(4, 14, 6, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--green-dim);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 12px;
+      color: var(--green-light);
+      font-family: var(--font-mono);
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      max-width: calc(100vw - 40px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo-icon">◑</span>
+        <span class="logo-name">MiMi Nox</span>
+        <span class="status-dot" id="status-dot"></span>
+      </div>
+      <button class="btn-clear" id="btn-clear">✨ Neu</button>
+    </header>
+
+    <!-- Chat -->
+    <div class="chat" id="chat">
+      <div class="welcome-msg" id="welcome">
+        <span class="icon">◑</span>
+        <div class="title">Hey 👋</div>
+        Schreib mir – ich bin dein lokaler KI-Agent.
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-bar">
+      <div class="input-wrap">
+        <textarea class="chat-input" id="input" rows="1" placeholder="Nachricht…" autocomplete="off" autocorrect="off" spellcheck="true"></textarea>
+        <button class="mic-btn" id="mic-btn">🎙️</button>
+        <button class="send-btn" id="send-btn">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = '/api';
+    const MODEL = 'gemma4:e4b';
+
+    const $ = id => document.getElementById(id);
+    const chat = $('chat');
+    const input = $('input');
+    const sendBtn = $('send-btn');
+    const micBtn = $('mic-btn');
+    const welcome = $('welcome');
+    const toast = $('toast');
+    const statusDot = $('status-dot');
+
+    let history = [];
+    let streaming = false;
+    let abortCtrl = null;
+    let toastTimer = null;
+
+    // ── Init ──
+    fetch(`${API}/mobile/ping`, { method: 'POST' }).catch(() => {});
+    checkHealth();
+    setInterval(checkHealth, 30000);
+
+    // ── Events ──
+    sendBtn.addEventListener('click', send);
+    $('btn-clear').addEventListener('click', clearChat);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+    input.addEventListener('input', autoResize);
+
+    // ── Mic (Whisper) ──
+    let mediaRec = null, audioChunks = [];
+    micBtn.addEventListener('click', toggleMic);
+
+    async function toggleMic() {
+      if (mediaRec && mediaRec.state === 'recording') {
+        mediaRec.stop();
+        micBtn.classList.remove('recording');
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRec = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        audioChunks = [];
+        mediaRec.ondataavailable = e => audioChunks.push(e.data);
+        mediaRec.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          if (blob.size < 1000) return;
+          showToast('📝 Transkribiere…');
+          const fd = new FormData();
+          fd.append('file', blob, 'voice.webm');
+          try {
+            const res = await fetch(`${API}/audio/transcribe`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.text && data.text.trim()) {
+              input.value = data.text.trim();
+              autoResize();
+              send(true);
+            }
+          } catch (e) { showToast('⚠ Transkription fehlgeschlagen'); }
+        };
+        mediaRec.start();
+        micBtn.classList.add('recording');
+      } catch { showToast('⚠ Mikrofon nicht verfügbar'); }
+    }
+
+    // ── Send ──
+    function send(isVoice = false) {
+      if (streaming) { if (abortCtrl) abortCtrl.abort(); return; }
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      autoResize();
+      if (welcome) welcome.remove();
+
+      addBubble('user', text);
+      history.push({ role: 'user', content: text });
+      streamResponse(text, isVoice);
+    }
+
+    async function streamResponse(text, isVoice) {
+      streaming = true;
+      sendBtn.textContent = '⏹';
+      sendBtn.classList.add('stop');
+      input.disabled = true;
+
+      const bubble = addBubble('ai', '');
+      bubble.classList.add('streaming');
+      let full = '';
+
+      try {
+        abortCtrl = new AbortController();
+        const res = await fetch(`${API}/chat/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, model: MODEL, history, autonomous: true }),
+          signal: abortCtrl.signal,
+        });
+
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            let evt;
+            try { evt = JSON.parse(line.slice(6).trim()); } catch { continue; }
+
+            switch (evt.type) {
+              case 'chunk':
+                full += evt.data;
+                bubble.textContent += evt.data;
+                scrollBottom();
+                break;
+
+              case 'thinking_start':
+                showToast('🧠 Denke nach…');
+                break;
+
+              case 'activity':
+                showToast(`⬡ ${evt.cmd}`);
+                break;
+
+              case 'reflect':
+                if (evt.status === 'running') showToast('🔍 Qualitätsprüfung…');
+                break;
+
+              case 'revision':
+                full = '';
+                bubble.textContent = '';
+                showToast('🔄 Überarbeitung…');
+                break;
+
+              case 'replace_text':
+                full = evt.text || full;
+                break;
+
+              case 'error':
+                bubble.textContent = `⚠ ${evt.msg}`;
+                showToast(`⚠ ${evt.msg}`, true);
+                break;
+
+              case 'done':
+                break;
+            }
+          }
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          showToast('🛑 Abgebrochen');
+        } else {
+          bubble.textContent = `⚠ Verbindungsfehler`;
+          showToast('⚠ Fehler', true);
+        }
+      }
+
+      // Finalize
+      bubble.classList.remove('streaming');
+      if (full) {
+        // Markdown rendern
+        if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+          bubble.innerHTML = DOMPurify.sanitize(marked.parse(full));
+        }
+        // Vorlesen-Button
+        const speakBtn = document.createElement('button');
+        speakBtn.className = 'speak-btn';
+        speakBtn.textContent = '🔊 Vorlesen';
+        speakBtn.onclick = () => speakText(full, speakBtn);
+        bubble.appendChild(speakBtn);
+
+        history.push({ role: 'assistant', content: full });
+
+        // Auto-Vorlesen bei Sprachmodus
+        if (isVoice) speakText(full);
+      }
+
+      streaming = false;
+      sendBtn.textContent = '➤';
+      sendBtn.classList.remove('stop');
+      input.disabled = false;
+      input.focus();
+      scrollBottom();
+    }
+
+    // ── TTS ──
+    let currentAudio = null;
+    async function speakText(text, btn = null) {
+      if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; if (btn) btn.textContent = '🔊 Vorlesen'; return; }
+      let clean = text.replace(/```[\s\S]*?```/g, ' Codeblock. ').replace(/<[^>]+>/g, '').replace(/[*_~`#\[\]()]/g, '').trim();
+      if (!clean) return;
+      if (btn) btn.textContent = '⏳ Lade…';
+      try {
+        const voice = localStorage.getItem('mimi_nox_voice') || 'de-DE-KillianNeural';
+        const res = await fetch(`${API}/audio/synthesize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: clean, voice }) });
+        if (!res.ok) throw 0;
+        const data = await res.json();
+        currentAudio = new Audio(data.audio_url);
+        currentAudio.onended = () => { if (btn) btn.textContent = '🔊 Vorlesen'; };
+        if (btn) btn.textContent = '⏹ Stopp';
+        await currentAudio.play();
+      } catch { if (btn) btn.textContent = '🔊 Vorlesen'; }
+    }
+
+    // ── Helpers ──
+    function addBubble(role, text) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      if (text) div.textContent = text;
+      chat.appendChild(div);
+      scrollBottom();
+      return div;
+    }
+
+    function scrollBottom() {
+      requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; });
+    }
+
+    function autoResize() {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+    }
+
+    function clearChat() {
+      history = [];
+      chat.innerHTML = `<div class="welcome-msg" id="welcome"><span class="icon">◑</span><div class="title">Hey 👋</div>Schreib mir – ich bin dein lokaler KI-Agent.</div>`;
+      input.value = '';
+      autoResize();
+      input.focus();
+    }
+
+    function showToast(text, isError = false) {
+      toast.textContent = text;
+      toast.style.color = isError ? '#fca5a5' : 'var(--green-light)';
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(5000) });
+        const data = await res.json();
+        statusDot.classList.toggle('offline', !data.ollama);
+      } catch {
+        statusDot.classList.add('offline');
+      }
+    }
+  </script>
+</body>
+</html>
