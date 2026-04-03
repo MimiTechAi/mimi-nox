@@ -23,15 +23,6 @@
 
 ## 🎬 See it in action
 
-<!-- 
-  TODO: Replace with actual 15-second GIF/WebP recording showing:
-  1. User types a message → AI streams response with tool calls
-  2. QR-Code scan → mobile chat opens instantly
-  3. /scan command → image analysis in real time
-  
-  Record with: ./scripts/record_demo.sh (or use ScreenStudio / Kap)
--->
-
 <div align="center">
 
 <img src="docs/screenshots/desktop.png" alt="MiMi Nox – Desktop Chat with AI Activity Panel" width="800">
@@ -40,7 +31,7 @@
 
 </div>
 
-> 🎥 **Full demo video coming soon.** In the meantime — clone it, run `./install.sh`, and see for yourself.
+> 🎥 **Full demo video coming soon.** Clone it, run `./install.sh`, and see for yourself in under 5 minutes.
 
 ---
 
@@ -121,7 +112,8 @@ The script handles everything:
 git clone https://github.com/MimiTechAi/mimi-nox.git
 cd mimi-nox
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,voice]"
+pip install -e .
+ollama pull gemma4:e4b
 ```
 
 ### Run
@@ -271,16 +263,11 @@ A `docker-compose.yml` is in progress. In the meantime, the install script is **
 MiMi is built to be hacked. Adding a new skill takes one Markdown file:
 
 ```markdown
-# skills/code-reviewer.md
----
-name: code-reviewer
-trigger: /review
-description: Reviews code like a senior engineer
-tools:
-  - read_file
-  - list_directory
-  - run_shell
----
+# code-reviewer
+
+**Trigger**: /review
+**Description**: Reviews code like a senior engineer
+**Tools**: read_file, list_directory, run_shell
 
 ## System Prompt
 
@@ -329,7 +316,7 @@ The model will automatically call your tool when the user's intent matches.
 
 ## ⚡ Skills & Slash Commands
 
-### Built-in Skills (8)
+### Built-in Skills (6)
 
 | Skill | Trigger | Function |
 |---|---|---|
@@ -380,8 +367,8 @@ Inspired by Claude's artifact system: code blocks open in a sleek side panel.
 ## ⏰ Background Jobs (Scheduler)
 
 ```bash
-# Via chat
-/schedule "daily 08:00" "Create a daily briefing on Tesla news"
+# Via chat (cron format: Minute Hour Day Month Weekday)
+/schedule "Create a daily briefing on Tesla news" @ 0 8 * * *
 
 # Via API
 POST /api/schedule
@@ -418,7 +405,7 @@ Server runs at `http://127.0.0.1:8765`. Swagger docs: `/api/docs`
 |---|---|---|
 | `POST` | `/api/chat` | Synchronous chat |
 | `POST` | `/api/chat/stream` | SSE stream (recommended) |
-| `POST` | `/api/chat/approve` | Tool confirmation |
+| `POST` | `/api/sandbox/approve` | Tool confirmation (approve/deny) |
 
 ### Vision (NEW)
 
@@ -571,7 +558,7 @@ python tests/validate_all_capabilities.py
 
 | Mechanism | Description |
 |---|---|
-| **Local-First** | No data leaves your machine |
+| **Local-First** | All AI inference runs locally. Web search and TTS use external services by design. |
 | **Shell Sandbox** | Commands **always** require user confirmation |
 | **File Whitelist** | Access only to Desktop, Documents, Downloads, Projects, tmp |
 | **iframe Sandbox** | HTML artifacts without network access |
@@ -615,7 +602,7 @@ Contributions welcome! Please note:
 ## 📄 License
 
 MIT — [MiMi Tech AI UG](https://mimiai.de), Bad Liebenzell, Black Forest, Germany
-© 2026 MiMi Tech AI UG. All rights reserved.
+© 2026 MiMi Tech AI UG. Released under the [MIT License](LICENSE).
 
 ---
 
