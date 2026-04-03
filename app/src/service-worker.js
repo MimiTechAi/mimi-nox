@@ -7,7 +7,7 @@
  *   - Alles andere: Network-First mit Cache-Fallback
  */
 
-const CACHE_VERSION = 'v6'; // Mobile Telegram-Style Redesign
+const CACHE_VERSION = 'v7'; // Lokale marked+DOMPurify, kein CDN
 const CACHE_NAME = `mimi-nox-${CACHE_VERSION}`;
 
 // Statische Assets die pre-gecached werden
@@ -20,6 +20,8 @@ const PRECACHE_ASSETS = [
   '/artifact.js',
   '/manifest.json',
   '/forest.svg',
+  '/lib/marked.min.js',
+  '/lib/purify.min.js',
 ];
 
 // Diese URL-Präfixe werden NIEMALS gecached (immer Live-Daten)
